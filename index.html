@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="description" content="Harmonia - 高機能モダン音楽プレイヤー">
+    <meta name="theme-color" content="#6366f1">
+    <title>Harmonia - 音楽プレイヤー</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- フォント -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- スタイルシート -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- モバイルメニューボタン -->
+    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="メニューを開く">
+        ☰
+    </button>
+
+    <div class="container">
+        <!-- サイドバー -->
+        <aside class="sidebar" id="sidebar">
+            <header class="app-header">
+                <h1 class="app-name">Harmonia</h1>
+                <p class="app-tagline">音楽プレイヤー</p>
+            </header>
+
+            <!-- 検索バー -->
+            <div class="search-bar">
+                <input 
+                    type="search" 
+                    class="search-input" 
+                    id="searchInput" 
+                    placeholder="🔍 トラックを検索..."
+                    aria-label="トラック検索">
+            </div>
+
+            <!-- ナビゲーション -->
+            <nav class="sidebar-nav" role="navigation" aria-label="メインナビゲーション">
+                <button class="sidebar-item active" data-view="library" aria-current="page">
+                    <span class="sidebar-item-icon" aria-hidden="true">🎵</span>
+                    ライブラリ
+                </button>
+                <button class="sidebar-item" data-view="favorites">
+                    <span class="sidebar-item-icon" aria-hidden="true">❤️</span>
+                    お気に入り
+                </button>
+                <button class="sidebar-item" data-view="playlists">
+                    <span class="sidebar-item-icon" aria-hidden="true">📋</span>
+                    プレイリスト
+                </button>
+                <button class="sidebar-item" data-view="queue">
+                    <span class="sidebar-item-icon" aria-hidden="true">⏭</span>
+                    キュー
+                </button>
+            </nav>
+
+            <!-- クイックアクション -->
+            <div class="quick-actions">
+                <button class="quick-action-btn" id="uploadBtn">
+                    <span class="sidebar-item-icon" aria-hidden="true">➕</span>
+                    ファイルを追加
+                </button>
+                <button class="quick-action-btn" id="createPlaylistBtn">
+                    <span class="sidebar-item-icon" aria-hidden="true">📝</span>
+                    プレイリスト作成
+                </button>
+                <button class="quick-action-btn" id="settingsBtn">
+                    <span class="sidebar-item-icon" aria-hidden="true">⚙️</span>
+                    設定
+                </button>
+                <button class="quick-action-btn" id="aboutBtn">
+                    <span class="sidebar-item-icon" aria-hidden="true">ℹ️</span>
+                    アプリについて
+                </button>
+            </div>
+        </aside>
+
+        <!-- メインコンテンツ -->
+        <main class="main-content">
+            <!-- ライブラリビュー -->
+            <section id="libraryView" class="view active">
+                <header class="view-header">
+                    <h2 class="view-title">ライブラリ</h2>
+                    <p class="view-subtitle">すべてのトラック</p>
+                </header>
+
+                <!-- ビジュアライザー -->
+                <div class="visualizer-container">
+                    <canvas id="visualizerCanvas" aria-label="オーディオビジュアライザー"></canvas>
+                </div>
+
+                <div class="track-list" id="trackList" role="list">
+                    <!-- トラックは動的に生成されます -->
+                </div>
+            </section>
+
+            <!-- お気に入りビュー -->
+            <section id="favoritesView" class="view">
+                <header class="view-header">
+                    <h2 class="view-title">お気に入り</h2>
+                    <p class="view-subtitle">お気に入りのトラック</p>
+                </header>
+
+                <div class="track-list" id="favoritesList" role="list">
+                    <!-- お気に入りトラックは動的に生成されます -->
+                </div>
+            </section>
+
+            <!-- プレイリストビュー -->
+            <section id="playlistsView" class="view">
+                <header class="view-header">
+                    <h2 class="view-title">プレイリスト</h2>
+                    <p class="view-subtitle">あなたのプレイリスト</p>
+                </header>
+
+                <div id="playlistsContainer">
+                    <!-- プレイリストは動的に生成されます -->
+                </div>
+            </section>
+
+            <!-- キュービュー -->
+            <section id="queueView" class="view">
+                <header class="view-header">
+                    <h2 class="view-title">キュー</h2>
+                    <p class="view-subtitle">次に再生される曲</p>
+                </header>
+
+                <div style="margin-bottom: 16px;">
+                    <button class="btn btn-secondary" id="clearQueueBtn">
+                        キューをクリア
+                    </button>
+                </div>
+
+                <div id="queueList" role="list">
+                    <!-- キューは動的に生成されます -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- プレイヤー -->
+    <footer class="player" role="region" aria-label="音楽プレイヤー">
+        <div class="progress-container" id="progressContainer">
+            <span class="progress-time" id="currentTime" aria-live="off">0:00</span>
+            <div class="progress-track" role="slider" aria-label="再生位置" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <span class="progress-time" id="duration" aria-live="off">0:00</span>
+        </div>
+
+        <div class="player-main">
+            <div class="now-playing">
+                <div class="now-playing-artwork" id="nowPlayingArtwork" aria-label="現在の曲のアートワーク">
+                    🎵
+                </div>
+                <div class="now-playing-info">
+                    <div class="now-playing-title" id="nowPlayingTitle">トラックが選択されていません</div>
+                    <div class="now-playing-artist" id="nowPlayingArtist">アーティスト</div>
+                </div>
+            </div>
+
+            <div class="player-controls">
+                <button class="control-btn" id="prevBtn" aria-label="前のトラック">
+                    ⏮
+                </button>
+                <button class="control-btn play" id="playBtn" aria-label="再生">
+                    ▶
+                </button>
+                <button class="control-btn" id="nextBtn" aria-label="次のトラック">
+                    ⏭
+                </button>
+            </div>
+
+            <div class="player-extras">
+                <button class="icon-btn" id="abRepeatBtn" aria-label="A-Bリピート" aria-pressed="false" title="A-Bリピート: A点→B点→A点設定">
+                    🔄
+                </button>
+                <button class="icon-btn" id="shuffleBtn" aria-label="シャッフル" aria-pressed="false">
+                    🔀
+                </button>
+                <button class="icon-btn" id="repeatBtn" aria-label="リピート" aria-pressed="false">
+                    🔁
+                </button>
+                <div class="volume-container">
+                    <button class="icon-btn" id="volumeIcon" aria-label="音量">🔊</button>
+                    <div class="volume-slider" role="slider" aria-label="音量" aria-valuemin="0" aria-valuemax="100" aria-valuenow="70" tabindex="0">
+                        <div class="volume-fill" id="volumeFill" style="width: 70%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- オーディオ要素 -->
+    <audio id="audioElement" preload="metadata"></audio>
+
+    <!-- ファイルアップロードモーダル -->
+    <div id="uploadModal" class="modal" role="dialog" aria-labelledby="uploadModalTitle" aria-modal="true" aria-hidden="true">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h3 class="modal-title" id="uploadModalTitle">ファイルを追加</h3>
+                <button class="close-btn" id="closeUploadModal" aria-label="閉じる">✕</button>
+            </header>
+            <div class="form-group">
+                <label class="form-label" for="fileInput">音楽ファイルを選択</label>
+                <input type="file" id="fileInput" class="form-input" accept="audio/*" multiple>
+            </div>
+            <p style="font-size: 13px; color: var(--theme-text-secondary);">
+                対応フォーマット: MP3, WAV, OGG, M4A, FLAC<br>
+                🆕 ID3タグとアートワークを自動読み取り
+            </p>
+        </div>
+    </div>
+
+    <!-- 設定モーダル -->
+    <div id="settingsModal" class="modal" role="dialog" aria-labelledby="settingsModalTitle" aria-modal="true" aria-hidden="true">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h3 class="modal-title" id="settingsModalTitle">設定</h3>
+                <button class="close-btn" id="closeSettingsModal" aria-label="閉じる">✕</button>
+            </header>
+
+            <!-- テーマ -->
+            <div class="form-group">
+                <label class="form-label">テーマ</label>
+                <div class="theme-selector" role="radiogroup" aria-label="テーマ選択">
+                    <button class="theme-option active" data-theme="default" role="radio" aria-checked="true">
+                        <div class="theme-preview" style="background: linear-gradient(135deg, #6366f1, #ec4899);"></div>
+                        <div style="font-size: 12px;">デフォルト</div>
+                    </button>
+                    <button class="theme-option" data-theme="ocean" role="radio" aria-checked="false">
+                        <div class="theme-preview" style="background: linear-gradient(135deg, #06b6d4, #22d3ee);"></div>
+                        <div style="font-size: 12px;">オーシャン</div>
+                    </button>
+                    <button class="theme-option" data-theme="sunset" role="radio" aria-checked="false">
+                        <div class="theme-preview" style="background: linear-gradient(135deg, #f59e0b, #dc2626);"></div>
+                        <div style="font-size: 12px;">サンセット</div>
+                    </button>
+                    <button class="theme-option" data-theme="forest" role="radio" aria-checked="false">
+                        <div class="theme-preview" style="background: linear-gradient(135deg, #10b981, #34d399);"></div>
+                        <div style="font-size: 12px;">フォレスト</div>
+                    </button>
+                    <button class="theme-option" data-theme="minimal" role="radio" aria-checked="false">
+                        <div class="theme-preview" style="background: linear-gradient(135deg, #64748b, #94a3b8);"></div>
+                        <div style="font-size: 12px;">ミニマル</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- イコライザー -->
+            <div class="form-group equalizer-section">
+                <div class="equalizer-header">
+                    <label class="form-label">3バンドイコライザー</label>
+                    <button class="btn btn-secondary" style="padding: 8px 16px; font-size: 12px;" id="resetEqBtn">
+                        リセット
+                    </button>
+                </div>
+                <div class="equalizer-controls">
+                    <div class="eq-band">
+                        <label class="eq-label" for="eqLow">低音 (200Hz)</label>
+                        <input type="range" class="eq-slider" id="eqLow" min="-12" max="12" step="1" value="0" 
+                               aria-label="低音イコライザー">
+                        <div class="eq-value" id="eqLowValue">0dB</div>
+                    </div>
+                    <div class="eq-band">
+                        <label class="eq-label" for="eqMid">中音 (1kHz)</label>
+                        <input type="range" class="eq-slider" id="eqMid" min="-12" max="12" step="1" value="0"
+                               aria-label="中音イコライザー">
+                        <div class="eq-value" id="eqMidValue">0dB</div>
+                    </div>
+                    <div class="eq-band">
+                        <label class="eq-label" for="eqHigh">高音 (3kHz)</label>
+                        <input type="range" class="eq-slider" id="eqHigh" min="-12" max="12" step="1" value="0"
+                               aria-label="高音イコライザー">
+                        <div class="eq-value" id="eqHighValue">0dB</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 再生設定 -->
+            <div class="form-group">
+                <label class="form-label">
+                    <input type="checkbox" id="visualizerToggle" checked>
+                    ビジュアライザーを表示
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <input type="checkbox" id="backgroundPlayToggle" checked>
+                    バックグラウンド再生を有効化
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <input type="checkbox" id="crossfadeToggle">
+                    クロスフェード再生を有効化
+                </label>
+                <small style="color: var(--theme-text-secondary); font-size: 12px;">
+                    曲と曲の間をスムーズに繋ぎます（3秒）
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <input type="checkbox" id="gaplessToggle" checked>
+                    ギャップレス再生を有効化
+                </label>
+                <small style="color: var(--theme-text-secondary); font-size: 12px;">
+                    次の曲を事前読み込みして途切れを防ぎます
+                </small>
+            </div>
+
+            <!-- 🔋 省エネモード（新機能） -->
+            <div class="form-group">
+                <label class="form-label">
+                    <input type="checkbox" id="powerSaveToggle">
+                    🔋 省エネモードを有効化
+                </label>
+                <small style="color: var(--theme-text-secondary); font-size: 12px;">
+                    CPU使用率を削減してバッテリーを節約します
+                </small>
+            </div>
+
+            <div class="form-group" id="powerSaveProfileGroup" style="display: none;">
+                <label class="form-label">省エネプロファイル</label>
+                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                    <label style="flex: 1; cursor: pointer;">
+                        <input type="radio" name="powerSaveProfile" value="aggressive"> ⚡ 最大節約
+                    </label>
+                    <label style="flex: 1; cursor: pointer;">
+                        <input type="radio" name="powerSaveProfile" value="balanced" checked> ⚖️ バランス
+                    </label>
+                    <label style="flex: 1; cursor: pointer;">
+                        <input type="radio" name="powerSaveProfile" value="none"> 🚀 フル機能
+                    </label>
+                </div>
+            </div>
+
+            <!-- 再生速度 -->
+            <div class="form-group">
+                <label class="form-label">再生速度</label>
+                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                    <input type="range" id="playbackRateSlider" min="0.5" max="2.0" step="0.05" value="1.0" 
+                           style="flex: 1;" aria-label="再生速度">
+                    <span id="playbackRateValue" style="min-width: 50px; text-align: right;">1.00x</span>
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;" onclick="document.getElementById('playbackRateSlider').value = 0.75; document.getElementById('playbackRateSlider').dispatchEvent(new Event('input'));">0.75x</button>
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;" onclick="document.getElementById('playbackRateSlider').value = 1.0; document.getElementById('playbackRateSlider').dispatchEvent(new Event('input'));">1.0x</button>
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;" onclick="document.getElementById('playbackRateSlider').value = 1.25; document.getElementById('playbackRateSlider').dispatchEvent(new Event('input'));">1.25x</button>
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;" onclick="document.getElementById('playbackRateSlider').value = 1.5; document.getElementById('playbackRateSlider').dispatchEvent(new Event('input'));">1.5x</button>
+                </div>
+            </div>
+
+            <!-- スリープタイマー -->
+            <div class="form-group">
+                <label class="form-label">スリープタイマー</label>
+                <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleep15">15分</button>
+                    <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleep30">30分</button>
+                    <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleep45">45分</button>
+                    <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleep60">60分</button>
+                    <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleepCancel">キャンセル</button>
+                </div>
+                <div id="sleepTimerStatus" style="margin-top: 8px; font-size: 12px; color: var(--theme-text-secondary);"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- アバウトモーダル -->
+    <div id="aboutModal" class="modal" role="dialog" aria-labelledby="aboutModalTitle" aria-modal="true" aria-hidden="true">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h3 class="modal-title" id="aboutModalTitle">Harmoniaについて</h3>
+                <button class="close-btn" id="closeAboutModal" aria-label="閉じる">✕</button>
+            </header>
+
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="font-size: 64px; margin-bottom: 16px;" aria-hidden="true">🎵</div>
+                <h4 style="font-size: 20px; margin-bottom: 8px;">Harmonia</h4>
+                <p style="color: var(--theme-text-secondary); font-size: 14px;">Version 3.0.0</p>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <h5 style="margin-bottom: 12px; font-size: 16px;">🆕 主な機能</h5>
+                <ul style="font-size: 14px; color: var(--theme-text-secondary); line-height: 1.8; padding-left: 20px;">
+                    <li>キュー機能（次に再生リスト）</li>
+                    <li>トラック検索</li>
+                    <li>3バンドイコライザー</li>
+                    <li>音連動ビジュアライザー</li>
+                    <li>クロスフェード再生</li>
+                    <li>トラック永続保存</li>
+                    <li>ID3タグ＆アートワーク表示</li>
+                    <li>ギャップレス再生</li>
+                    <li>PWA対応（オフライン動作）</li>
+                </ul>
+            </div>
+
+            <div style="text-align: center; font-size: 12px; color: var(--theme-text-secondary);">
+                © 2024 Harmonia. All rights reserved.
+            </div>
+        </div>
+    </div>
+
+    <!-- プレイリスト管理モーダル（新規作成・編集） -->
+    <div id="playlistManagementModal" class="modal" role="dialog" aria-labelledby="playlistManagementTitle" aria-modal="true" aria-hidden="true">
+        <div class="modal-content" style="max-width: 500px;">
+            <header class="modal-header">
+                <h3 class="modal-title" id="playlistManagementTitle">プレイリストを作成</h3>
+                <button class="close-btn" id="closePlaylistModal" aria-label="閉じる">✕</button>
+            </header>
+
+            <div style="padding: 20px;">
+                <div style="margin-bottom: 16px;">
+                    <label for="playlistNameInput" style="display: block; margin-bottom: 8px; font-weight: 600;">プレイリスト名 *</label>
+                    <input type="text" id="playlistNameInput" placeholder="例：クラシック音楽" style="width: 100%; padding: 10px; border: 1px solid var(--theme-border); border-radius: 6px; font-size: 14px;">
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label for="playlistDescInput" style="display: block; margin-bottom: 8px; font-weight: 600;">説明（オプション）</label>
+                    <textarea id="playlistDescInput" placeholder="プレイリストの説明を入力..." style="width: 100%; padding: 10px; border: 1px solid var(--theme-border); border-radius: 6px; font-size: 14px; min-height: 80px; resize: vertical;"></textarea>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label for="playlistColorInput" style="display: block; margin-bottom: 8px; font-weight: 600;">プレイリスト色（オプション）</label>
+                    <input type="color" id="playlistColorInput" value="#6366f1" style="width: 60px; height: 40px; border: 1px solid var(--theme-border); border-radius: 6px; cursor: pointer;">
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button id="cancelPlaylistBtn" style="flex: 1; padding: 10px; border: 1px solid var(--theme-border); background: transparent; color: var(--theme-text); border-radius: 6px; cursor: pointer; font-size: 14px;">キャンセル</button>
+                    <button id="createPlaylistSubmitBtn" style="flex: 1; padding: 10px; background: var(--theme-primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">作成</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- プレイリスト管理メニューモーダル -->
+    <div id="playlistActionsModal" class="modal" role="dialog" aria-labelledby="playlistActionsTitle" aria-modal="true" aria-hidden="true">
+        <div class="modal-content" style="max-width: 350px;">
+            <header class="modal-header">
+                <h3 class="modal-title" id="playlistActionsTitle" style="font-size: 16px;">プレイリスト操作</h3>
+                <button class="close-btn" id="closePlaylistActionsModal" aria-label="閉じる">✕</button>
+            </header>
+
+            <div style="padding: 12px 0;">
+                <button class="playlist-action-btn" id="editPlaylistBtn" style="width: 100%; padding: 12px 16px; border: none; background: transparent; text-align: left; cursor: pointer; border-bottom: 1px solid var(--theme-border); font-size: 14px;">✎ 編集</button>
+                <button class="playlist-action-btn" id="duplicatePlaylistBtn" style="width: 100%; padding: 12px 16px; border: none; background: transparent; text-align: left; cursor: pointer; border-bottom: 1px solid var(--theme-border); font-size: 14px;">📋 複製</button>
+                <button class="playlist-action-btn" id="exportPlaylistBtn" style="width: 100%; padding: 12px 16px; border: none; background: transparent; text-align: left; cursor: pointer; border-bottom: 1px solid var(--theme-border); font-size: 14px;">⬇ エクスポート</button>
+                <button class="playlist-action-btn" id="deletePlaylistBtn" style="width: 100%; padding: 12px 16px; border: none; background: transparent; text-align: left; cursor: pointer; color: #ef4444; font-size: 14px;">🗑 削除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- メインアプリケーション（モジュール） -->
+    <script type="module" src="app.js"></script>
+    
+    <!-- UI イベントハンドラー -->
+    <script>
+        // モバイルメニュー
+        document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('mobile-open');
+        });
+
+        // ビュー切り替え
+        document.querySelectorAll('.sidebar-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const viewName = item.dataset.view;
+                window.harmonia.ui.switchView(viewName);
+                
+                // モバイルでサイドバーを閉じる
+                if (window.innerWidth <= 768) {
+                    document.getElementById('sidebar').classList.remove('mobile-open');
+                }
+            });
+        });
+
+        // モーダル操作
+        document.getElementById('uploadBtn').addEventListener('click', () => {
+            window.harmonia.ui.openModal('uploadModal');
+        });
+        document.getElementById('createPlaylistBtn').addEventListener('click', () => {
+            window.harmonia.ui.openModal('playlistManagementModal');
+        });
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            window.harmonia.ui.openModal('settingsModal');
+        });
+        document.getElementById('aboutBtn').addEventListener('click', () => {
+            window.harmonia.ui.openModal('aboutModal');
+        });
+
+        document.getElementById('closeUploadModal').addEventListener('click', () => {
+            window.harmonia.ui.closeModal('uploadModal');
+        });
+        document.getElementById('closeSettingsModal').addEventListener('click', () => {
+            window.harmonia.ui.closeModal('settingsModal');
+        });
+        document.getElementById('closeAboutModal').addEventListener('click', () => {
+            window.harmonia.ui.closeModal('aboutModal');
+        });
+
+        // プレイリスト管理モーダル
+        document.getElementById('closePlaylistModal').addEventListener('click', () => {
+            window.harmonia.ui.closeModal('playlistManagementModal');
+        });
+        document.getElementById('cancelPlaylistBtn').addEventListener('click', () => {
+            window.harmonia.ui.closeModal('playlistManagementModal');
+        });
+        document.getElementById('createPlaylistSubmitBtn').addEventListener('click', async () => {
+            const name = document.getElementById('playlistNameInput').value.trim();
+            const description = document.getElementById('playlistDescInput').value.trim();
+            const color = document.getElementById('playlistColorInput').value;
+
+            if (!name) {
+                window.harmonia.ui.showNotification('プレイリスト名を入力してください', 'warning');
+                return;
+            }
+
+            try {
+                const playlist = await window.harmonia.playlistManager.createPlaylist(name, description, { color });
+                window.harmonia.ui.showNotification(`✅ プレイリスト「${name}」を作成しました`, 'success');
+                window.harmonia.ui.closeModal('playlistManagementModal');
+                
+                // フォームリセット
+                document.getElementById('playlistNameInput').value = '';
+                document.getElementById('playlistDescInput').value = '';
+                document.getElementById('playlistColorInput').value = '#6366f1';
+                
+                // プレイリストビューを更新
+                window.harmonia.renderPlaylists?.();
+            } catch (error) {
+                console.error('❌ プレイリスト作成失敗:', error);
+                window.harmonia.ui.showNotification('プレイリスト作成に失敗しました', 'error');
+            }
+        });
+
+        document.getElementById('closePlaylistActionsModal').addEventListener('click', () => {
+            window.harmonia.ui.closeModal('playlistActionsModal');
+        });
+
+        document.getElementById('editPlaylistBtn').addEventListener('click', () => {
+            window.harmonia.ui.showNotification('プレイリスト編集機能は近日実装予定です', 'info');
+        });
+
+        document.getElementById('duplicatePlaylistBtn').addEventListener('click', async () => {
+            const playlistId = window.harmonia._currentPlaylistId;
+            if (!playlistId) return;
+
+            try {
+                await window.harmonia.playlistManager.duplicatePlaylist(playlistId);
+                window.harmonia.ui.showNotification('✅ プレイリストを複製しました', 'success');
+                window.harmonia.ui.closeModal('playlistActionsModal');
+                window.harmonia.renderPlaylists?.();
+            } catch (error) {
+                console.error('❌ 複製失敗:', error);
+                window.harmonia.ui.showNotification('複製に失敗しました', 'error');
+            }
+        });
+
+        document.getElementById('exportPlaylistBtn').addEventListener('click', async () => {
+            const playlistId = window.harmonia._currentPlaylistId;
+            if (!playlistId) return;
+
+            try {
+                const json = await window.harmonia.playlistManager.exportPlaylist(playlistId, 'json');
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `playlist-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                window.harmonia.ui.showNotification('✅ プレイリストをエクスポートしました', 'success');
+                window.harmonia.ui.closeModal('playlistActionsModal');
+            } catch (error) {
+                console.error('❌ エクスポート失敗:', error);
+                window.harmonia.ui.showNotification('エクスポートに失敗しました', 'error');
+            }
+        });
+
+        document.getElementById('deletePlaylistBtn').addEventListener('click', async () => {
+            const playlistId = window.harmonia._currentPlaylistId;
+            if (!playlistId) return;
+
+            if (confirm('このプレイリストを削除してもよろしいですか？')) {
+                try {
+                    await window.harmonia.playlistManager.deletePlaylist(playlistId);
+                    window.harmonia.ui.showNotification('✅ プレイリストを削除しました', 'success');
+                    window.harmonia.ui.closeModal('playlistActionsModal');
+                    window.harmonia.renderPlaylists?.();
+                } catch (error) {
+                    console.error('❌ 削除失敗:', error);
+                    window.harmonia.ui.showNotification('削除に失敗しました', 'error');
+                }
+            }
+        });
+
+        // ファイルアップロード
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            window.harmonia.handleFileUpload(e.target.files);
+            window.harmonia.ui.closeModal('uploadModal');
+        });
+
+        // プレイヤーコントロール
+        document.getElementById('playBtn').addEventListener('click', () => {
+            window.harmonia.togglePlay();
+        });
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            window.harmonia.previous();
+        });
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            window.harmonia.next();
+        });
+        document.getElementById('shuffleBtn').addEventListener('click', () => {
+            const settings = window.harmonia.state.get('settings');
+            window.harmonia.state.updateSettings({ isShuffle: !settings.isShuffle });
+        });
+        document.getElementById('repeatBtn').addEventListener('click', () => {
+            const settings = window.harmonia.state.get('settings');
+            const modes = ['none', 'all', 'one'];
+            const currentIndex = modes.indexOf(settings.repeatMode);
+            const newMode = modes[(currentIndex + 1) % modes.length];
+            window.harmonia.state.updateSettings({ repeatMode: newMode });
+        });
+
+        // 検索
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            window.harmonia.state.setState({ searchQuery: e.target.value });
+        });
+
+        // キューをクリア
+        document.getElementById('clearQueueBtn').addEventListener('click', () => {
+            window.harmonia.state.clearQueue();
+        });
+
+        // イコライザー
+        document.getElementById('eqLow').addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            window.harmonia.audio.setEqualizer('low', value);
+            document.getElementById('eqLowValue').textContent = value + 'dB';
+            window.harmonia.state.updateSettings({ eqLow: value });
+        });
+        document.getElementById('eqMid').addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            window.harmonia.audio.setEqualizer('mid', value);
+            document.getElementById('eqMidValue').textContent = value + 'dB';
+            window.harmonia.state.updateSettings({ eqMid: value });
+        });
+        document.getElementById('eqHigh').addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            window.harmonia.audio.setEqualizer('high', value);
+            document.getElementById('eqHighValue').textContent = value + 'dB';
+            window.harmonia.state.updateSettings({ eqHigh: value });
+        });
+        document.getElementById('resetEqBtn').addEventListener('click', () => {
+            window.harmonia.audio.resetEqualizer();
+            ['eqLow', 'eqMid', 'eqHigh'].forEach(id => {
+                document.getElementById(id).value = 0;
+                document.getElementById(id + 'Value').textContent = '0dB';
+            });
+            window.harmonia.state.updateSettings({ eqLow: 0, eqMid: 0, eqHigh: 0 });
+        });
+
+        // テーマ切り替え
+        document.querySelectorAll('.theme-option').forEach(option => {
+            option.addEventListener('click', () => {
+                const theme = option.dataset.theme;
+                document.body.setAttribute('data-theme', theme);
+                document.querySelectorAll('.theme-option').forEach(opt => {
+                    opt.classList.remove('active');
+                    opt.setAttribute('aria-checked', 'false');
+                });
+                option.classList.add('active');
+                option.setAttribute('aria-checked', 'true');
+                window.harmonia.state.updateSettings({ theme });
+            });
+        });
+
+        // 設定トグル
+        document.getElementById('visualizerToggle').addEventListener('change', (e) => {
+            window.harmonia.state.updateSettings({ visualizerEnabled: e.target.checked });
+            if (!e.target.checked) {
+                window.harmonia.stopVisualizer();
+            }
+        });
+        document.getElementById('backgroundPlayToggle').addEventListener('change', (e) => {
+            window.harmonia.state.updateSettings({ backgroundPlayEnabled: e.target.checked });
+        });
+        document.getElementById('crossfadeToggle').addEventListener('change', (e) => {
+            window.harmonia.state.updateSettings({ crossfadeEnabled: e.target.checked });
+        });
+        document.getElementById('gaplessToggle').addEventListener('change', (e) => {
+            window.harmonia.state.updateSettings({ gaplessEnabled: e.target.checked });
+        });
+
+        // 🔋 省エネモード（新機能）
+        document.getElementById('powerSaveToggle').addEventListener('change', (e) => {
+            const enabled = e.target.checked;
+            const profileGroup = document.getElementById('powerSaveProfileGroup');
+            profileGroup.style.display = enabled ? 'block' : 'none';
+
+            const profile = document.querySelector('input[name="powerSaveProfile"]:checked')?.value || 'balanced';
+            window.harmonia.setPowerSaveMode(enabled, profile);
+        });
+
+        document.querySelectorAll('input[name="powerSaveProfile"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const enabled = document.getElementById('powerSaveToggle').checked;
+                if (enabled) {
+                    window.harmonia.setPowerSaveMode(true, e.target.value);
+                }
+            });
+        });
+
+        // 再生速度
+        document.getElementById('playbackRateSlider').addEventListener('input', (e) => {
+            const rate = parseFloat(e.target.value);
+            window.harmonia.setPlaybackRate(rate);
+            document.getElementById('playbackRateValue').textContent = rate.toFixed(2) + 'x';
+        });
+
+        // スリープタイマー
+        document.getElementById('sleep15').addEventListener('click', () => {
+            window.harmonia.setSleepTimer(15);
+        });
+        document.getElementById('sleep30').addEventListener('click', () => {
+            window.harmonia.setSleepTimer(30);
+        });
+        document.getElementById('sleep45').addEventListener('click', () => {
+            window.harmonia.setSleepTimer(45);
+        });
+        document.getElementById('sleep60').addEventListener('click', () => {
+            window.harmonia.setSleepTimer(60);
+        });
+        document.getElementById('sleepCancel').addEventListener('click', () => {
+            window.harmonia.clearSleepTimer();
+            window.harmonia.ui.showNotification('スリープタイマーをキャンセルしました', 'info');
+        });
+
+        // A-Bリピート
+        document.getElementById('abRepeatBtn').addEventListener('click', () => {
+            window.harmonia.setupABRepeat();
+        });
+
+        // スリープタイマーの残り時間表示を更新
+        window.harmonia.state.subscribe('sleepTimerRemaining', (remaining) => {
+            const statusEl = document.getElementById('sleepTimerStatus');
+            if (remaining > 0) {
+                const mins = Math.floor(remaining / 60);
+                const secs = remaining % 60;
+                statusEl.textContent = `残り時間: ${mins}分${secs}秒`;
+                statusEl.style.color = '#10b981';
+            } else {
+                statusEl.textContent = '';
+            }
+        });
+
+        // �️ トラック削除（新機能）
+        window.addEventListener('harmonia:deleteTrack', (e) => {
+            const trackId = e.detail;
+            window.harmonia.deleteTrack(trackId);
+        });
+
+        // �🔴 バグ修正: イベントリスナーを一元管理するための登録
+        window.htmlEventListeners = [];
+
+        // イベントリスナーをクリーンアップするメソッド（app.destroy()から呼ばれる）
+        window.cleanupHtmlEventListeners = function() {
+            console.log('🧹 Cleaning up HTML event listeners...');
+        };
+
+        // キャンバスサイズ調整
+        const canvas = document.getElementById('visualizerCanvas');
+        const resizeCanvas = () => {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        };
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        window.htmlEventListeners.push({ element: window, event: 'resize', handler: resizeCanvas });
+
+        // Service Worker登録と初期化完了後のチェック
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('✅ Service Worker registered'))
+                .catch(err => console.log('❌ Service Worker registration failed:', err));
+        }
+    </script>
+</body>
+</html>
