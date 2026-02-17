@@ -27,13 +27,13 @@
 - [x] 再生速度調整 (`setPlaybackRate()`)
 - [x] A-Bリピート (`setABRepeat()`, `clearABRepeat()`)
 
-#### 🎨 ビジュアライザー (70%)
+#### 🎨 ビジュアライザー (100%)
 - [x] 基本ビジュアライザー (7スタイル: bars, circular, waveform, spectrum, particles, radial, mirror)
 - [x] スタイル切り替え (`setVisualizerStyle()`)
 - [x] 色設定 (`setColors()`)
 - [x] 周波数データ取得 (`getFrequencyData()`)
-- [ ] ❌ **ビジュアライザー初期化メソッド未実装**
-- [ ] ❌ **ビジュアライザー設定リセット未実装**
+- [x] ビジュアライザー初期化メソッド (`initVisualizer()`)
+- [x] ビジュアライザー設定リセット (`resetVisualizerSettings()`)
 
 #### ⏱️ スリープタイマー (100%)
 - [x] タイマー設定 (`setSleepTimer()`)
@@ -148,21 +148,21 @@
 | 6 | state.favorites (Set型) | ✅ | Array変更 |
 | 7 | 初期化エラー表示 | ✅ | UI+コンソール |
 | 8 | エラーメッセージ表示 | ✅ | 両方に出力 |
-| **9** | **ビジュアライザー初期化バグ** | ❌ | **要実装** |
-| **10** | **EQ設定リセットが完全でない** | ❌ | **要実装** |
-| **11** | **設定リセット時にすべて反映されない** | ❌ | **要実装** |
+| 9 | ビジュアライザー初期化バグ | ✅ | initVisualizer()実装完了 |
+| 10 | EQ設定リセットが完全でない | ✅ | resetEQ()実装完了 |
+| 11 | 設定リセット時にすべて反映されない | ✅ | fullSystemReset()実装完了 |
 
 ---
 
-## 📝 実装予定リスト
+## 📝 実装完了リスト ✅
 
-### すぐに実装 (v3.1a)
-1. ✅ ビジュアライザー初期化メソッド (`resetVisualizerSettings())
+### v3.1 で実装完了
+1. ✅ ビジュアライザー初期化メソッド (`resetVisualizerSettings()`, `initVisualizer()`)
 2. ✅ EQ完全リセットメソッド (`resetEQ()`)
-3. ✅ システム完全初期化メソッド (`resetAllSettings()`)
+3. ✅ システム完全初期化メソッド (`fullSystemReset()`, `resetAllEffects()`)
 4. ✅ 全バグ修正 (11件)
 
-### 次版で実装 (v3.2)
+### 次版で実装予定 (v3.2+)
 - クラウド同期機能
 - ホットキー対応
 - プラグインシステム
