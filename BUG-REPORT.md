@@ -1,7 +1,7 @@
-# 🐛 Harmonia v3.0 - Bug Report & Fixes
+# 🐛 Harmonia v3.1 - Bug Report & Fixes
 
-**最終更新**: 2026年2月16日  
-**全バグ修正**: ✅ 完了
+**最終更新**: 2026年2月18日  
+**全バグ修正**: ✅ 完了 (11件)
 
 ---
 

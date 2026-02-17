@@ -1,3 +1,24 @@
 desktop.ini
 node_modules/
 *.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build & Distribution
+dist/
+build/
+*.zip
+*.tar.gz
+
+# Development
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

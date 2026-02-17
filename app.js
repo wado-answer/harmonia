@@ -138,7 +138,9 @@
             await this.updateStatistics();
 
         } catch (error) {
-            console.error('Data load error:', error);
+            errorTracker.track(error, { method: 'loadData' });
+            console.error('❌ Data load error:', error);
+            this.ui?.showNotification?.(errorTracker.getUserMessage(error), 'error');
         }
     }
 
@@ -575,7 +577,10 @@
         }
         
         const tracks = this.state.get('tracks');
-        if (index < 0 || index >= tracks.length) return;
+        if (index < 0 || index >= tracks.length) {
+            errorTracker.track(new Error(`Invalid track index: ${index}`), { method: 'playTrack' });
+            return;
+        }
 
         const track = tracks[index];
         
@@ -623,8 +628,9 @@
             }
 
         } catch (error) {
-            console.error('Playback error:', error);
-            this.ui.showNotification('再生に失敗しました', 'error');
+            errorTracker.track(error, { method: 'playTrack', trackIndex: index, trackId: track?.id });
+            console.error('❌ Playback error:', error);
+            this.ui?.showNotification?.(errorTracker.getUserMessage(error), 'error');
         } finally {
             this.isLoadingTrack = false;
         }
@@ -781,7 +787,7 @@
         );
 
         if (audioFiles.length === 0) {
-            this.ui.showNotification('音楽ファイルを選択してください', 'error');
+            this.ui?.showNotification?.('音楽ファイルを選択してください', 'error');
             return;
         }
 
@@ -821,11 +827,16 @@
                 await this.db.save('audioFiles', track);
 
             } catch (error) {
-                console.error(`File processing error (${file.name}):`, error);
+                errorTracker.track(error, { method: 'handleFileUpload', fileName: file.name });
+                console.error(`❌ File processing error (${file.name}):`, error);
+                this.ui?.showNotification?.(
+                    `ファイルエラー （${file.name}）: ${errorTracker.getUserMessage(error)}`,
+                    'error'
+                );
             }
         }
 
-        this.ui.showNotification(
+        this.ui?.showNotification?.(
             `${audioFiles.length}個のトラックを追加しました`,
             'success'
         );
@@ -898,7 +909,7 @@
 
             // 再生中のトラックが削除された場合は停止
             if (this.state.get('currentTrackIndex') === trackIndex) {
-                this.stop();
+                this.audio?.pause?.();
                 this.state.setState({ currentTrackIndex: -1 });
             } else if (this.state.get('currentTrackIndex') > trackIndex) {
                 this.state.setState({ 
@@ -935,13 +946,14 @@
                 await this.db.save('playlists', playlist);
             }
 
-            this.ui.showNotification(`✅ 「${track.title || 'トラック'}」を削除しました`, 'success');
+            this.ui?.showNotification?.(`✅ 「${track.title || 'トラック'}」を削除しました`, 'success');
             this.renderUI();
 
             return true;
         } catch (error) {
+            errorTracker.track(error, { method: 'deleteTrack', trackId });
             console.error('❌ トラック削除失敗:', error);
-            this.ui.showNotification(`削除に失敗: ${error.message}`, 'error');
+            this.ui?.showNotification?.(`削除に失敗: ${errorTracker.getUserMessage(error)}`, 'error');
             return false;
         }
     }
@@ -955,14 +967,15 @@
                 if (success) successCount++;
             }
 
-            this.ui.showNotification(
+            this.ui?.showNotification?.(
                 `✅ ${successCount}個のトラックを削除しました`,
                 'success'
             );
             return successCount;
         } catch (error) {
+            errorTracker.track(error, { method: 'deleteMultipleTracks' });
             console.error('❌ 複数削除失敗:', error);
-            this.ui.showNotification('削除処理中にエラーが発生しました', 'error');
+            this.ui?.showNotification?.('削除処理中にエラーが発生しました', 'error');
             return 0;
         }
     }
@@ -1081,23 +1094,39 @@
 
     // データ保存
     async saveSettings(settings) {
-        await this.db.save('settings', {
-            key: 'userSettings',
-            ...settings
-        });
+        try {
+            await this.db.save('settings', {
+                key: 'userSettings',
+                ...settings
+            });
+        } catch (error) {
+            errorTracker.track(error, { method: 'saveSettings' });
+            console.error('❌ Save settings error:', error);
+            this.ui?.showNotification?.('設定の保存に失敗しました', 'error');
+        }
     }
 
     async saveFavorites(favorites) {
-        await this.db.clear('favorites');
-        const batch = Array.from(favorites).map(trackId => ({ trackId }));
-        await this.db.saveBatch('favorites', batch);
+        try {
+            await this.db.clear('favorites');
+            const batch = Array.from(favorites).map(trackId => ({ trackId }));
+            await this.db.saveBatch('favorites', batch);
+        } catch (error) {
+            errorTracker.track(error, { method: 'saveFavorites' });
+            console.error('❌ Save favorites error:', error);
+        }
     }
 
     async saveQueue(queue) {
-        const q = Array.isArray(queue) ? queue : this.state.get('queue');
-        await this.db.clear('queue');
-        const batch = q.map((trackId, index) => ({ index, trackId }));
-        await this.db.saveBatch('queue', batch);
+        try {
+            const q = Array.isArray(queue) ? queue : this.state.get('queue');
+            await this.db.clear('queue');
+            const batch = q.map((trackId, index) => ({ index, trackId }));
+            await this.db.saveBatch('queue', batch);
+        } catch (error) {
+            errorTracker.track(error, { method: 'saveQueue' });
+            console.error('❌ Save queue error:', error);
+        }
     }
 
     // UIレンダリング
@@ -1643,82 +1672,98 @@
 
     // ===== 再生履歴・統計 =====
     async recordPlayHistory(trackId) {
-        const tracks = this.state.get('tracks');
-        const track = tracks.find(t => t.id === trackId);
-        
-        if (!track) return;
-        
-        const historyEntry = {
-            id: Date.now() + Math.random(),
-            trackId,
-            trackName: track.title,
-            artist: track.artist,
-            playedAt: new Date().toISOString(),
-            duration: track.duration || 0
-        };
-        
-        await this.db.save('playHistory', historyEntry);
-        
-        // 統計を更新
-        await this.updateStatistics();
+        try {
+            const tracks = this.state.get('tracks');
+            const track = tracks.find(t => t.id === trackId);
+            
+            if (!track) return;
+            
+            const historyEntry = {
+                id: Date.now() + Math.random(),
+                trackId,
+                trackName: track.title,
+                artist: track.artist,
+                playedAt: new Date().toISOString(),
+                duration: track.duration || 0
+            };
+            
+            await this.db.save('playHistory', historyEntry);
+            
+            // 統計を更新
+            await this.updateStatistics();
+        } catch (error) {
+            errorTracker.track(error, { method: 'recordPlayHistory', trackId });
+            console.error('❌ Record play history error:', error);
+        }
     }
 
     async updateStatistics() {
-        const history = await this.db.getAll('playHistory');
-        const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-        
-        const lastWeekPlays = history.filter(h => 
-            new Date(h.playedAt).getTime() > oneWeekAgo
-        );
-        
-        // 最も再生されたトラックを計算
-        const playCounts = {};
-        history.forEach(h => {
-            playCounts[h.trackId] = (playCounts[h.trackId] || 0) + 1;
-        });
-        
-        let mostPlayedTrack = null;
-        let maxPlays = 0;
-        Object.entries(playCounts).forEach(([trackId, count]) => {
-            if (count > maxPlays) {
-                maxPlays = count;
-                const entry = history.find(h => h.trackId === trackId);
-                if (entry) {
-                    mostPlayedTrack = {
-                        trackId,
-                        trackName: entry.trackName,
-                        artist: entry.artist,
-                        playCount: count
-                    };
+        try {
+            const history = await this.db.getAll('playHistory');
+            const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            
+            const lastWeekPlays = history.filter(h => 
+                new Date(h.playedAt).getTime() > oneWeekAgo
+            );
+            
+            // 最も再生されたトラックを計算
+            const playCounts = {};
+            history.forEach(h => {
+                playCounts[h.trackId] = (playCounts[h.trackId] || 0) + 1;
+            });
+            
+            let mostPlayedTrack = null;
+            let maxPlays = 0;
+            Object.entries(playCounts).forEach(([trackId, count]) => {
+                if (count > maxPlays) {
+                    maxPlays = count;
+                    const entry = history.find(h => h.trackId === trackId);
+                    if (entry) {
+                        mostPlayedTrack = {
+                            trackId,
+                            trackName: entry.trackName,
+                            artist: entry.artist,
+                            playCount: count
+                        };
+                    }
                 }
-            }
-        });
-        
-        // 総再生時間を計算
-        const totalListenTime = history.reduce((sum, h) => sum + (h.duration || 0), 0);
-        
-        const statistics = {
-            totalPlays: history.length,
-            totalListenTime,
-            mostPlayedTrack,
-            lastWeekPlays
-        };
-        
-        this.state.setState({ statistics, playHistory: history });
+            });
+            
+            // 総再生時間を計算
+            const totalListenTime = history.reduce((sum, h) => sum + (h.duration || 0), 0);
+            
+            const statistics = {
+                totalPlays: history.length,
+                totalListenTime,
+                mostPlayedTrack,
+                lastWeekPlays
+            };
+            
+            this.state.setState({ statistics, playHistory: history });
+        } catch (error) {
+            errorTracker.track(error, { method: 'updateStatistics' });
+            console.error('❌ Update statistics error:', error);
+        }
     }
 
     async clearPlayHistory() {
-        await this.db.clear('playHistory');
-        this.state.setState({ 
-            playHistory: [],
-            statistics: {
-                totalPlays: 0,
-                totalListenTime: 0,
-                mostPlayedTrack: null,
-                lastWeekPlays: []
-            }
-        });
-        this.ui.showNotification('再生履歴をクリアしました', 'success');
+        try {
+            await this.db.clear('playHistory');
+            this.state.setState({ 
+                playHistory: [],
+                statistics: {
+                    totalPlays: 0,
+                    totalListenTime: 0,
+                    mostPlayedTrack: null,
+                    lastWeekPlays: []
+                }
+            });
+            this.ui?.showNotification?.('再生履歴をクリアしました', 'success');
+        } catch (error) {
+            errorTracker.track(error, { method: 'clearPlayHistory' });
+            console.error('❌ Clear play history error:', error);
+            this.ui?.showNotification?.('履歴クリアに失敗しました', 'error');
+        }
     }
 
     // ===== 10バンドイコライザー =====
@@ -2522,20 +2567,209 @@
 
 }
 
-// アプリケーション起動
+// ===== 🔴 新規: グローバルエラーハンドリングシステム =====
+
+/**
+ * エラートラッキング・ロギング管理
+ * すべてのエラーを一元管理し、ユーザーフレンドリーなメッセージを表示
+ */
+class ErrorTracker {
+    constructor() {
+        this.errors = [];
+        this.maxErrors = 50; // 最大保持エラー数
+        this.errorMap = new Map(); // エラーコードのマッピング
+        this.initErrorMap();
+    }
+
+    initErrorMap() {
+        // エラーメッセージのマッピング（エラーキーワード → ユーザーメッセージ）
+        this.errorMap.set('NotAllowedError', 'ブラウザの設定により操作が拒否されました');
+        this.errorMap.set('NotSupportedError', 'このブラウザでは非対応の機能です');
+        this.errorMap.set('NotFoundError', '要素またはリソースが見つかりません');
+        this.errorMap.set('AbortError', '操作がキャンセルされました');
+        this.errorMap.set('TimeoutError', 'タイムアウト: 処理が長すぎます');
+        this.errorMap.set('QuotaExceededError', 'ストレージ容量が満杯です');
+        this.errorMap.set('NetworkError', 'ネットワーク接続エラーです');
+        this.errorMap.set('DataCloneError', 'データ複製エラーが発生しました');
+        this.errorMap.set('TypeError', '型エラーが発生しました');
+        this.errorMap.set('ReferenceError', '参照エラーが発生しました');
+        this.errorMap.set('SyntaxError', '構文エラーが発生しました');
+    }
+
+    /**
+     * エラーを記録
+     */
+    track(error, context = {}) {
+        const errorRecord = {
+            timestamp: new Date().toISOString(),
+            message: error?.message || String(error),
+            stack: error?.stack || '',
+            name: error?.name || 'Unknown',
+            context,
+            userAgent: navigator.userAgent,
+            url: window.location.href,
+            id: Date.now() + Math.random()
+        };
+
+        this.errors.push(errorRecord);
+        
+        // 最大数を超えた場合は古いエラーを削除
+        if (this.errors.length > this.maxErrors) {
+            this.errors.shift();
+        }
+
+        console.error('🔴 [ErrorTracker]', {
+            name: errorRecord.name,
+            message: errorRecord.message,
+            context: errorRecord.context,
+            timestamp: errorRecord.timestamp
+        });
+
+        return errorRecord;
+    }
+
+    /**
+     * ユーザーフレンドリーなメッセージを取得
+     */
+    getUserMessage(error) {
+        if (typeof error === 'string') {
+            return this.mapErrorMessage(error);
+        }
+
+        const errorName = error?.name || '';
+        const errorMessage = error?.message || '';
+
+        // 名前でマッピングを試みる
+        if (this.errorMap.has(errorName)) {
+            return this.errorMap.get(errorName);
+        }
+
+        // メッセージ内のキーワードで検索
+        for (const [key, value] of this.errorMap) {
+            if (errorMessage.includes(key)) {
+                return value;
+            }
+        }
+
+        // デフォルトメッセージ
+        return `エラーが発生しました: ${errorMessage || '詳細不明'}`;
+    }
+
+    mapErrorMessage(msg) {
+        for (const [key, value] of this.errorMap) {
+            if (msg.includes(key)) return value;
+        }
+        return msg;
+    }
+
+    /**
+     * エラー統計を取得
+     */
+    getStatistics() {
+        const stats = {
+            totalErrors: this.errors.length,
+            byName: {},
+            recent: this.errors.slice(-10)
+        };
+
+        this.errors.forEach(err => {
+            stats.byName[err.name] = (stats.byName[err.name] || 0) + 1;
+        });
+
+        return stats;
+    }
+
+    /**
+     * エラーログをダウンロード
+     */
+    downloadLogs() {
+        const data = {
+            exportedAt: new Date().toISOString(),
+            errors: this.errors,
+            statistics: this.getStatistics()
+        };
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `harmonia-error-logs-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    /**
+     * エラージャーナルをクリア
+     */
+    clear() {
+        this.errors = [];
+    }
+}
+
+// グローバルエラートラッカーインスタンス
+const errorTracker = new ErrorTracker();
+
+/**
+ * グローバルエラーハンドラー
+ */
+window.addEventListener('error', (event) => {
+    const error = event.error || new Error(event.message);
+    const errorRecord = errorTracker.track(error, {
+        source: 'uncaught-exception',
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno
+    });
+
+    // UI通知（app.ui が制御されている場合）
+    if (window.harmonia?.ui) {
+        const userMsg = errorTracker.getUserMessage(error);
+        window.harmonia.ui.showNotification(`⚠️ ${userMsg}`, 'error');
+    }
+
+    // エラーの送信を防止（ブラウザのデフォルト処理をスキップ）
+    event.preventDefault?.();
+});
+
+/**
+ * 未処理のPromise拒否ハンドラー
+ */
+window.addEventListener('unhandledrejection', (event) => {
+    const error = event.reason || new Error('Unknown rejection');
+    const errorRecord = errorTracker.track(error, {
+        source: 'unhandled-promise-rejection',
+        promise: event.promise
+    });
+
+    // UI通知
+    if (window.harmonia?.ui) {
+        const userMsg = errorTracker.getUserMessage(error);
+        window.harmonia.ui.showNotification(`⚠️ 非同期エラー: ${userMsg}`, 'error');
+    }
+
+    // event.preventDefault を呼び出してエラーを処理済みにマーク
+    event.preventDefault?.();
+});
+
+// ===== アプリケーション起動 =====
 const app = new HarmoniaApp();
 
 // 🔴 バグ修正: app を window に割り当てる（ES6モジュール内での グローバルアクセス）
 window.harmonia = app;
+window.harmonia.errorTracker = errorTracker;
 
 window.addEventListener('DOMContentLoaded', async () => {
     try {
         await app.init();
         console.log('✅ Harmonia initialized successfully');
         console.log('🎵 Background playback manager:', app.backgroundPlaybackManager ? '✅ Active' : '❌ Inactive');
+        console.log('🔴 Error tracking system:', '✅ Active');
     } catch (error) {
+        const errorRecord = errorTracker.track(error, { source: 'initialization' });
         console.error('❌ Failed to initialize Harmonia:', error);
-        window.harmonia?.ui?.showNotification?.(`初期化エラー: ${error.message}`, 'error');
+        window.harmonia?.ui?.showNotification?.(`初期化エラー: ${errorTracker.getUserMessage(error)}`, 'error');
     }
 });
 
