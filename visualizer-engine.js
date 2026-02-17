@@ -5,6 +5,7 @@ export class VisualizerEngine {
         this.ctx = canvas ? canvas.getContext('2d') : null;
         this.audioEngine = audioEngine;
         this.animationId = null;
+        this.resizeObserver = null;
         this.currentStyle = 'bars';
         this.colors = {
             primary: '#3b82f6',
@@ -21,6 +22,39 @@ export class VisualizerEngine {
         this.currentStyle = style;
     }
 
+    // クオリティ設定: 'low' | 'medium' | 'high'
+    setQuality(quality) {
+        this.quality = quality || 'high';
+
+        // オーディオアナライザの設定を適用
+        try {
+            if (this.audioEngine && this.audioEngine.nodes && this.audioEngine.nodes.analyser) {
+                const analyser = this.audioEngine.nodes.analyser;
+                switch (this.quality) {
+                    case 'low':
+                        analyser.fftSize = 512;
+                        analyser.smoothingTimeConstant = 0.6;
+                        break;
+                    case 'medium':
+                        analyser.fftSize = 1024;
+                        analyser.smoothingTimeConstant = 0.75;
+                        break;
+                    default:
+                        analyser.fftSize = 2048;
+                        analyser.smoothingTimeConstant = 0.85;
+                }
+
+                // 更新されるバッファサイズに基づき内部配列を再確保
+                const freqCount = analyser.frequencyBinCount;
+                this.audioEngine.visualizerData = new Uint8Array(freqCount);
+                this.audioEngine.frequencyData = new Uint8Array(freqCount);
+                this.audioEngine.timeDomainData = new Uint8Array(analyser.fftSize);
+            }
+        } catch (e) {
+            console.warn('Visualizer.setQuality: failed to apply analyser settings', e);
+        }
+    }
+
     start() {
         if (!this.canvas || !this.ctx || !this.audioEngine) {
             console.warn('Visualizer: Missing required components');
@@ -31,6 +65,9 @@ export class VisualizerEngine {
         
         // キャンバスの解像度を調整（高DPI/Retina対応）
         this._adjustCanvasResolution();
+        
+        // リサイズ監視を設定
+        this._setupResizeObserver();
         
         const render = () => {
             try {
@@ -76,9 +113,63 @@ export class VisualizerEngine {
             cancelAnimationFrame(this.animationId);
             this.animationId = null;
         }
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
         if (this.ctx) {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         }
+    }
+
+    // 🔧 バグ修正: キャンバス解像度調整メソッド実装
+    _adjustCanvasResolution() {
+        if (!this.canvas || !this.ctx) return;
+
+        const parent = this.canvas.parentElement;
+        if (!parent) return;
+
+        const dpr = window.devicePixelRatio || 1;
+        const rect = parent.getBoundingClientRect();
+        
+        // コンテナの実際のサイズを取得
+        const width = rect.width;
+        const height = rect.height;
+
+        // キャンバスの内部解像度（高DPI対応）
+        this.canvas.width = width * dpr;
+        this.canvas.height = height * dpr;
+
+        // CSSのサイズ
+        this.canvas.style.width = width + 'px';
+        this.canvas.style.height = height + 'px';
+
+        // キャンバスコンテキストの変換をリセットしてからスケーリング（累積スケーリング防止）
+        if (typeof this.ctx.resetTransform === 'function') {
+            this.ctx.resetTransform();
+        } else {
+            this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        }
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // CSSピクセルでの描画のために保存
+        this.cssWidth = width;
+        this.cssHeight = height;
+        this.dpr = dpr;
+    }
+
+    // ✨ 新機能: リサイズ監視の設定
+    _setupResizeObserver() {
+        if (!this.canvas || typeof ResizeObserver === 'undefined') return;
+
+        const parent = this.canvas.parentElement;
+        if (!parent) return;
+
+        this.resizeObserver = new ResizeObserver(() => {
+            this._adjustCanvasResolution();
+        });
+
+        this.resizeObserver.observe(parent);
     }
 
     // スタイル1: 標準バー（改良版）
@@ -86,10 +177,12 @@ export class VisualizerEngine {
         const data = this.audioEngine.getFrequencyData();
         if (!data) return;
 
-        const width = this.canvas.width;
-        const height = this.canvas.height;
-        
+        const dpr = this.dpr || (window.devicePixelRatio || 1);
+        const width = this.cssWidth || (this.canvas.width / dpr);
+        const height = this.cssHeight || (this.canvas.height / dpr);
+
         this.ctx.fillStyle = getComputedStyle(this.canvas).backgroundColor || '#1e293b';
+        this.ctx.clearRect(0, 0, width, height);
         this.ctx.fillRect(0, 0, width, height);
 
         const barCount = 64;
@@ -118,12 +211,14 @@ export class VisualizerEngine {
         const data = this.audioEngine.getFrequencyData();
         if (!data) return;
 
-        const width = this.canvas.width;
-        const height = this.canvas.height;
+        const dpr = this.dpr || (window.devicePixelRatio || 1);
+        const width = this.cssWidth || (this.canvas.width / dpr);
+        const height = this.cssHeight || (this.canvas.height / dpr);
         const centerX = width / 2;
         const centerY = height / 2;
         const radius = Math.min(width, height) * 0.3;
         
+        this.ctx.clearRect(0, 0, width, height);
         this.ctx.fillStyle = getComputedStyle(this.canvas).backgroundColor || '#1e293b';
         this.ctx.fillRect(0, 0, width, height);
 
@@ -156,9 +251,11 @@ export class VisualizerEngine {
         const data = this.audioEngine.getTimeDomainData();
         if (!data) return;
 
-        const width = this.canvas.width;
-        const height = this.canvas.height;
-        
+        const dpr = this.dpr || (window.devicePixelRatio || 1);
+        const width = this.cssWidth || (this.canvas.width / dpr);
+        const height = this.cssHeight || (this.canvas.height / dpr);
+
+        this.ctx.clearRect(0, 0, width, height);
         this.ctx.fillStyle = getComputedStyle(this.canvas).backgroundColor || '#1e293b';
         this.ctx.fillRect(0, 0, width, height);
 
@@ -191,9 +288,11 @@ export class VisualizerEngine {
         const data = this.audioEngine.getFrequencyData();
         if (!data) return;
 
-        const width = this.canvas.width;
-        const height = this.canvas.height;
-        
+        const dpr = this.dpr || (window.devicePixelRatio || 1);
+        const width = this.cssWidth || (this.canvas.width / dpr);
+        const height = this.cssHeight || (this.canvas.height / dpr);
+
+        this.ctx.clearRect(0, 0, width, height);
         this.ctx.fillStyle = getComputedStyle(this.canvas).backgroundColor || '#1e293b';
         this.ctx.fillRect(0, 0, width, height);
 
@@ -223,8 +322,9 @@ export class VisualizerEngine {
         const data = this.audioEngine.getFrequencyData();
         if (!data) return;
 
-        const width = this.canvas.width;
-        const height = this.canvas.height;
+        const dpr = this.dpr || (window.devicePixelRatio || 1);
+        const width = this.cssWidth || (this.canvas.width / dpr);
+        const height = this.cssHeight || (this.canvas.height / dpr);
         
         // 半透明の背景で軌跡効果
         this.ctx.fillStyle = 'rgba(30, 41, 59, 0.1)';
@@ -253,11 +353,13 @@ export class VisualizerEngine {
         const data = this.audioEngine.getFrequencyData();
         if (!data) return;
 
-        const width = this.canvas.width;
-        const height = this.canvas.height;
+        const dpr = this.dpr || (window.devicePixelRatio || 1);
+        const width = this.cssWidth || (this.canvas.width / dpr);
+        const height = this.cssHeight || (this.canvas.height / dpr);
         const centerX = width / 2;
         const centerY = height / 2;
         
+        this.ctx.clearRect(0, 0, width, height);
         this.ctx.fillStyle = getComputedStyle(this.canvas).backgroundColor || '#1e293b';
         this.ctx.fillRect(0, 0, width, height);
 
@@ -291,9 +393,11 @@ export class VisualizerEngine {
         const data = this.audioEngine.getFrequencyData();
         if (!data) return;
 
-        const width = this.canvas.width;
-        const height = this.canvas.height;
+        const dpr = this.dpr || (window.devicePixelRatio || 1);
+        const width = this.cssWidth || (this.canvas.width / dpr);
+        const height = this.cssHeight || (this.canvas.height / dpr);
         
+        this.ctx.clearRect(0, 0, width, height);
         this.ctx.fillStyle = getComputedStyle(this.canvas).backgroundColor || '#1e293b';
         this.ctx.fillRect(0, 0, width, height);
 

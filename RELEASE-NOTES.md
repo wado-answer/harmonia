@@ -161,6 +161,10 @@ python -m http.server 8000
 # http://localhost:8000
 ```
 
+もしくはデモ（公開版）:
+
+https://wado-answer.github.io/harmonia/
+
 ### 機能テスト
 ```javascript
 // コンソール (F12) で実行:

@@ -38,6 +38,10 @@
    http://localhost:8000
    ```
 
+または公開版にアクセス:
+
+https://wado-answer.github.io/harmonia/
+
 ---
 
 ## 基本操作

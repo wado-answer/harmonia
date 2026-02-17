@@ -160,6 +160,10 @@ python -m http.server 8000
 # ブラウザで http://localhost:8000 を開く
 ```
 
+公開版（オンラインデモ）:
+
+https://wado-answer.github.io/harmonia/
+
 ### VS Code + Live Server
 1. Live Server拡張機能をインストール
 2. index.htmlを右クリック

@@ -24,6 +24,9 @@
         ☰
     </button>
 
+    <!-- ✨ モバイルサイドバーオーバーレイ -->
+    <div class="mobile-sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+
     <div class="container">
         <!-- サイドバー -->
         <aside class="sidebar" id="sidebar">
@@ -186,6 +189,9 @@
                 <button class="icon-btn" id="shuffleBtn" aria-label="シャッフル" aria-pressed="false">
                     🔀
                 </button>
+                <button class="icon-btn" id="shareTrackBtn" aria-label="共有" title="再生中トラックを共有">
+                    📤
+                </button>
                 <button class="icon-btn" id="repeatBtn" aria-label="リピート" aria-pressed="false">
                     🔁
                 </button>
@@ -220,159 +226,365 @@
         </div>
     </div>
 
-    <!-- 設定モーダル -->
+    <!-- 設定モーダル（タブベース） -->
     <div id="settingsModal" class="modal" role="dialog" aria-labelledby="settingsModalTitle" aria-modal="true" aria-hidden="true">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 700px; max-height: 85vh; display: flex; flex-direction: column;">
             <header class="modal-header">
                 <h3 class="modal-title" id="settingsModalTitle">設定</h3>
                 <button class="close-btn" id="closeSettingsModal" aria-label="閉じる">✕</button>
             </header>
 
-            <!-- テーマ -->
-            <div class="form-group">
-                <label class="form-label">テーマ</label>
-                <div class="theme-selector" role="radiogroup" aria-label="テーマ選択">
-                    <button class="theme-option active" data-theme="default" role="radio" aria-checked="true">
-                        <div class="theme-preview" style="background: linear-gradient(135deg, #6366f1, #ec4899);"></div>
-                        <div style="font-size: 12px;">デフォルト</div>
-                    </button>
-                    <button class="theme-option" data-theme="ocean" role="radio" aria-checked="false">
-                        <div class="theme-preview" style="background: linear-gradient(135deg, #06b6d4, #22d3ee);"></div>
-                        <div style="font-size: 12px;">オーシャン</div>
-                    </button>
-                    <button class="theme-option" data-theme="sunset" role="radio" aria-checked="false">
-                        <div class="theme-preview" style="background: linear-gradient(135deg, #f59e0b, #dc2626);"></div>
-                        <div style="font-size: 12px;">サンセット</div>
-                    </button>
-                    <button class="theme-option" data-theme="forest" role="radio" aria-checked="false">
-                        <div class="theme-preview" style="background: linear-gradient(135deg, #10b981, #34d399);"></div>
-                        <div style="font-size: 12px;">フォレスト</div>
-                    </button>
-                    <button class="theme-option" data-theme="minimal" role="radio" aria-checked="false">
-                        <div class="theme-preview" style="background: linear-gradient(135deg, #64748b, #94a3b8);"></div>
-                        <div style="font-size: 12px;">ミニマル</div>
-                    </button>
-                </div>
+            <!-- ✨ タブナビゲーション -->
+            <div class="settings-tabs" role="tablist" aria-label="設定タブ">
+                <button class="settings-tab active" role="tab" data-tab="appearance" aria-selected="true">🎨 表示</button>
+                <button class="settings-tab" role="tab" data-tab="equalizer" aria-selected="false">🎛️ イコライザー</button>
+                <button class="settings-tab" role="tab" data-tab="playback" aria-selected="false">▶️ 再生</button>
+                <button class="settings-tab" role="tab" data-tab="keyboard" aria-selected="false">⌨️ ショートカット</button>
+                <button class="settings-tab" role="tab" data-tab="data" aria-selected="false">💾 データ</button>
             </div>
 
-            <!-- イコライザー -->
-            <div class="form-group equalizer-section">
-                <div class="equalizer-header">
-                    <label class="form-label">3バンドイコライザー</label>
-                    <button class="btn btn-secondary" style="padding: 8px 16px; font-size: 12px;" id="resetEqBtn">
-                        リセット
-                    </button>
-                </div>
-                <div class="equalizer-controls">
-                    <div class="eq-band">
-                        <label class="eq-label" for="eqLow">低音 (200Hz)</label>
-                        <input type="range" class="eq-slider" id="eqLow" min="-12" max="12" step="1" value="0" 
-                               aria-label="低音イコライザー">
-                        <div class="eq-value" id="eqLowValue">0dB</div>
+            <!-- タブコンテンツ容器 -->
+            <div class="settings-content" style="flex: 1; overflow-y: auto; padding: 20px;">
+
+                <!-- 📱 表示タブ -->
+                <div class="settings-panel active" id="appearance-panel" role="tabpanel" aria-labelledby="appearance-tab">
+                    <div class="form-group">
+                        <label class="form-label">🎨 テーマ</label>
+                        <div class="theme-selector" role="radiogroup" aria-label="テーマ選択">
+                            <button class="theme-option active" data-theme="default" role="radio" aria-checked="true">
+                                <div class="theme-preview" style="background: linear-gradient(135deg, #6366f1, #ec4899);"></div>
+                                <div style="font-size: 12px;">デフォルト</div>
+                            </button>
+                            <button class="theme-option" data-theme="ocean" role="radio" aria-checked="false">
+                                <div class="theme-preview" style="background: linear-gradient(135deg, #06b6d4, #22d3ee);"></div>
+                                <div style="font-size: 12px;">オーシャン</div>
+                            </button>
+                            <button class="theme-option" data-theme="sunset" role="radio" aria-checked="false">
+                                <div class="theme-preview" style="background: linear-gradient(135deg, #f59e0b, #dc2626);"></div>
+                                <div style="font-size: 12px;">サンセット</div>
+                            </button>
+                            <button class="theme-option" data-theme="forest" role="radio" aria-checked="false">
+                                <div class="theme-preview" style="background: linear-gradient(135deg, #10b981, #34d399);"></div>
+                                <div style="font-size: 12px;">フォレスト</div>
+                            </button>
+                            <button class="theme-option" data-theme="minimal" role="radio" aria-checked="false">
+                                <div class="theme-preview" style="background: linear-gradient(135deg, #64748b, #94a3b8);"></div>
+                                <div style="font-size: 12px;">ミニマル</div>
+                            </button>
+                        </div>
                     </div>
-                    <div class="eq-band">
-                        <label class="eq-label" for="eqMid">中音 (1kHz)</label>
-                        <input type="range" class="eq-slider" id="eqMid" min="-12" max="12" step="1" value="0"
-                               aria-label="中音イコライザー">
-                        <div class="eq-value" id="eqMidValue">0dB</div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="visualizerToggle" checked>
+                            ビジュアライザーを表示
+                        </label>
                     </div>
-                    <div class="eq-band">
-                        <label class="eq-label" for="eqHigh">高音 (3kHz)</label>
-                        <input type="range" class="eq-slider" id="eqHigh" min="-12" max="12" step="1" value="0"
-                               aria-label="高音イコライザー">
-                        <div class="eq-value" id="eqHighValue">0dB</div>
+
+                    <div class="form-group">
+                        <label class="form-label">ビジュアライザースタイル</label>
+                        <select id="visualizerStyle" style="width: 100%; padding: 8px; border: 1px solid var(--theme-border); border-radius: 6px; background: var(--theme-bg-secondary); color: var(--theme-text-primary); font-size: 14px;">
+                            <option value="bars">標準バー</option>
+                            <option value="circular">円形</option>
+                            <option value="waveform">波形</option>
+                            <option value="spectrum">スペクトラム</option>
+                            <option value="particles">パーティクル</option>
+                            <option value="radial">放射状</option>
+                            <option value="mirror">ミラー</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">表示密度</label>
+                        <select id="compactDensity" style="width: 100%; padding: 8px; border: 1px solid var(--theme-border); border-radius: 6px; background: var(--theme-bg-secondary); color: var(--theme-text-primary); font-size: 14px;">
+                            <option value="comfortable">ゆったり (default)</option>
+                            <option value="compact">コンパクト</option>
+                            <option value="condensed">密集</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">ミニプレイヤー位置</label>
+                        <select id="miniPlayerPosition" style="width: 100%; padding: 8px; border: 1px solid var(--theme-border); border-radius: 6px; background: var(--theme-bg-secondary); color: var(--theme-text-primary); font-size: 14px;">
+                            <option value="bottom">下部 (default)</option>
+                            <option value="left">左</option>
+                            <option value="right">右</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">アクセントカラー</label>
+                        <div style="display:flex; gap:8px;">
+                            <button class="theme-accent" data-accent="default" style="width:34px; height:34px; border-radius:6px; background: linear-gradient(135deg,#6366f1,#ec4899); border: 1px solid var(--theme-border);"></button>
+                            <button class="theme-accent" data-accent="#06b6d4" style="width:34px; height:34px; border-radius:6px; background:#06b6d4; border: 1px solid var(--theme-border);"></button>
+                            <button class="theme-accent" data-accent="#f59e0b" style="width:34px; height:34px; border-radius:6px; background:#f59e0b; border: 1px solid var(--theme-border);"></button>
+                            <button class="theme-accent" data-accent="#10b981" style="width:34px; height:34px; border-radius:6px; background:#10b981; border: 1px solid var(--theme-border);"></button>
+                            <input type="color" id="customAccentPicker" value="#6366f1" style="width:46px; height:34px; border-radius:6px; border: 1px solid var(--theme-border);">
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- 再生設定 -->
-            <div class="form-group">
-                <label class="form-label">
-                    <input type="checkbox" id="visualizerToggle" checked>
-                    ビジュアライザーを表示
-                </label>
-            </div>
+                <!-- 🎛️ イコライザータブ -->
+                <div class="settings-panel" id="equalizer-panel" role="tabpanel" aria-labelledby="equalizer-tab">
+                    <div class="form-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <label class="form-label">10バンドイコライザー</label>
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" id="resetEqBtn">
+                                リセット
+                            </button>
+                        </div>
 
-            <div class="form-group">
-                <label class="form-label">
-                    <input type="checkbox" id="backgroundPlayToggle" checked>
-                    バックグラウンド再生を有効化
-                </label>
-            </div>
+                        <!-- ✨ EQプリセット -->
+                        <div style="margin-bottom: 12px;">
+                            <label class="form-label">プリセット</label>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px;">
+                                <button class="btn btn-secondary eq-preset" data-preset="flat" style="font-size: 12px;">フラット</button>
+                                <button class="btn btn-secondary eq-preset" data-preset="pop" style="font-size: 12px;">ポップ</button>
+                                <button class="btn btn-secondary eq-preset" data-preset="rock" style="font-size: 12px;">ロック</button>
+                                <button class="btn btn-secondary eq-preset" data-preset="jazz" style="font-size: 12px;">ジャズ</button>
+                                <button class="btn btn-secondary eq-preset" data-preset="classical" style="font-size: 12px;">クラシック</button>
+                                <button class="btn btn-secondary eq-preset" data-preset="edm" style="font-size: 12px;">EDM</button>
+                            </div>
+                        </div>
 
-            <div class="form-group">
-                <label class="form-label">
-                    <input type="checkbox" id="crossfadeToggle">
-                    クロスフェード再生を有効化
-                </label>
-                <small style="color: var(--theme-text-secondary); font-size: 12px;">
-                    曲と曲の間をスムーズに繋ぎます（3秒）
-                </small>
-            </div>
+                        <div class="form-group" style="margin-top:8px;">
+                            <label class="form-label">
+                                <input type="checkbox" id="eqEnabledToggle">
+                                イコライザーを有効化
+                            </label>
+                        </div>
 
-            <div class="form-group">
-                <label class="form-label">
-                    <input type="checkbox" id="gaplessToggle" checked>
-                    ギャップレス再生を有効化
-                </label>
-                <small style="color: var(--theme-text-secondary); font-size: 12px;">
-                    次の曲を事前読み込みして途切れを防ぎます
-                </small>
-            </div>
-
-            <!-- 🔋 省エネモード（新機能） -->
-            <div class="form-group">
-                <label class="form-label">
-                    <input type="checkbox" id="powerSaveToggle">
-                    🔋 省エネモードを有効化
-                </label>
-                <small style="color: var(--theme-text-secondary); font-size: 12px;">
-                    CPU使用率を削減してバッテリーを節約します
-                </small>
-            </div>
-
-            <div class="form-group" id="powerSaveProfileGroup" style="display: none;">
-                <label class="form-label">省エネプロファイル</label>
-                <div style="display: flex; gap: 8px; margin-top: 8px;">
-                    <label style="flex: 1; cursor: pointer;">
-                        <input type="radio" name="powerSaveProfile" value="aggressive"> ⚡ 最大節約
-                    </label>
-                    <label style="flex: 1; cursor: pointer;">
-                        <input type="radio" name="powerSaveProfile" value="balanced" checked> ⚖️ バランス
-                    </label>
-                    <label style="flex: 1; cursor: pointer;">
-                        <input type="radio" name="powerSaveProfile" value="none"> 🚀 フル機能
-                    </label>
+                        <!-- 10バンドスライダー -->
+                        <div class="equalizer-10band">
+                            <div class="eq-band" style="flex: 1;">
+                                <label class="eq-label">32Hz</label>
+                                <input type="range" class="eq-slider" data-band="0" min="-12" max="12" step="1" value="0">
+                                <div class="eq-value">0dB</div>
+                            </div>
+                            <div class="eq-band" style="flex: 1;">
+                                <label class="eq-label">64Hz</label>
+                                <input type="range" class="eq-slider" data-band="1" min="-12" max="12" step="1" value="0">
+                                <div class="eq-value">0dB</div>
+                            </div>
+                            <div class="eq-band" style="flex: 1;">
+                                <label class="eq-label">125Hz</label>
+                                <input type="range" class="eq-slider" data-band="2" min="-12" max="12" step="1" value="0">
+                                <div class="eq-value">0dB</div>
+                            </div>
+                            <div class="eq-band" style="flex: 1;">
+                                <label class="eq-label">250Hz</label>
+                                <input type="range" class="eq-slider" data-band="3" min="-12" max="12" step="1" value="0">
+                                <div class="eq-value">0dB</div>
+                            </div>
+                            <div class="eq-band" style="flex: 1;">
+                                <label class="eq-label">500Hz</label>
+                                <input type="range" class="eq-slider" data-band="4" min="-12" max="12" step="1" value="0">
+                                <div class="eq-value">0dB</div>
+                            </div>
+                            <div class="eq-band" style="flex: 1;">
+                                <label class="eq-label">1kHz</label>
+                                <input type="range" class="eq-slider" data-band="5" min="-12" max="12" step="1" value="0">
+                                <div class="eq-value">0dB</div>
+                            </div>
+                            <div class="eq-band" style="flex: 1;">
+                                <label class="eq-label">2kHz</label>
+                                <input type="range" class="eq-slider" data-band="6" min="-12" max="12" step="1" value="0">
+                                <div class="eq-value">0dB</div>
+                            </div>
+                            <div class="eq-band" style="flex: 1;">
+                                <label class="eq-label">4kHz</label>
+                                <input type="range" class="eq-slider" data-band="7" min="-12" max="12" step="1" value="0">
+                                <div class="eq-value">0dB</div>
+                            </div>
+                            <div class="eq-band" style="flex: 1;">
+                                <label class="eq-label">8kHz</label>
+                                <input type="range" class="eq-slider" data-band="8" min="-12" max="12" step="1" value="0">
+                                <div class="eq-value">0dB</div>
+                            </div>
+                            <div class="eq-band" style="flex: 1;">
+                                <label class="eq-label">16kHz</label>
+                                <input type="range" class="eq-slider" data-band="9" min="-12" max="12" step="1" value="0">
+                                <div class="eq-value">0dB</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <!-- 再生速度 -->
-            <div class="form-group">
-                <label class="form-label">再生速度</label>
-                <div style="display: flex; gap: 8px; margin-top: 8px;">
-                    <input type="range" id="playbackRateSlider" min="0.5" max="2.0" step="0.05" value="1.0" 
-                           style="flex: 1;" aria-label="再生速度">
-                    <span id="playbackRateValue" style="min-width: 50px; text-align: right;">1.00x</span>
-                </div>
-                <div style="display: flex; gap: 8px; margin-top: 8px;">
-                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;" onclick="document.getElementById('playbackRateSlider').value = 0.75; document.getElementById('playbackRateSlider').dispatchEvent(new Event('input'));">0.75x</button>
-                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;" onclick="document.getElementById('playbackRateSlider').value = 1.0; document.getElementById('playbackRateSlider').dispatchEvent(new Event('input'));">1.0x</button>
-                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;" onclick="document.getElementById('playbackRateSlider').value = 1.25; document.getElementById('playbackRateSlider').dispatchEvent(new Event('input'));">1.25x</button>
-                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;" onclick="document.getElementById('playbackRateSlider').value = 1.5; document.getElementById('playbackRateSlider').dispatchEvent(new Event('input'));">1.5x</button>
-                </div>
-            </div>
+                <!-- ▶️ 再生タブ -->
+                <div class="settings-panel" id="playback-panel" role="tabpanel" aria-labelledby="playback-tab">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="backgroundPlayToggle" checked>
+                            バックグラウンド再生を有効化
+                        </label>
+                    </div>
 
-            <!-- スリープタイマー -->
-            <div class="form-group">
-                <label class="form-label">スリープタイマー</label>
-                <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
-                    <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleep15">15分</button>
-                    <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleep30">30分</button>
-                    <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleep45">45分</button>
-                    <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleep60">60分</button>
-                    <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleepCancel">キャンセル</button>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="crossfadeToggle">
+                            クロスフェード再生を有効化
+                        </label>
+                        <small style="color: var(--theme-text-secondary); font-size: 12px;">
+                            曲と曲の間をスムーズに繋ぎます（3秒）
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="gaplessToggle" checked>
+                            ギャップレス再生を有効化
+                        </label>
+                        <small style="color: var(--theme-text-secondary); font-size: 12px;">
+                            次の曲を事前読み込みして途切れを防ぎます
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="powerSaveToggle">
+                            🔋 省エネモードを有効化
+                        </label>
+                        <small style="color: var(--theme-text-secondary); font-size: 12px;">
+                            CPU使用率を削減してバッテリーを節約します
+                        </small>
+                    </div>
+
+                    <div class="form-group" id="powerSaveProfileGroup" style="display: none;">
+                        <label class="form-label">省エネプロファイル</label>
+                        <div style="display: flex; gap: 8px; margin-top: 8px;">
+                            <label style="flex: 1; cursor: pointer;">
+                                <input type="radio" name="powerSaveProfile" value="aggressive"> ⚡ 最大節約
+                            </label>
+                            <label style="flex: 1; cursor: pointer;">
+                                <input type="radio" name="powerSaveProfile" value="balanced" checked> ⚖️ バランス
+                            </label>
+                            <label style="flex: 1; cursor: pointer;">
+                                <input type="radio" name="powerSaveProfile" value="none"> 🚀 フル機能
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">再生速度</label>
+                        <div style="display: flex; gap: 8px; margin-top: 8px;">
+                            <input type="range" id="playbackRateSlider" min="0.5" max="2.0" step="0.05" value="1.0" 
+                                   style="flex: 1;" aria-label="再生速度">
+                            <span id="playbackRateValue" style="min-width: 50px; text-align: right;">1.00x</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 8px;">
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;">0.75x</button>
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;">1.0x</button>
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;">1.25x</button>
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; flex: 1;">1.5x</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">クロスフェード時間</label>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input type="range" id="crossfadeDuration" min="0" max="10" step="1" value="3" style="flex:1;">
+                            <span id="crossfadeDurationValue" style="min-width:40px; text-align:right;">3s</span>
+                        </div>
+                        <small style="color: var(--theme-text-secondary); font-size: 12px;">曲間のフェード時間を秒で指定します</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="loudnessNormalizationToggle">
+                            ラウドネス正規化を有効化（再生音量の自動調整）
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">最大音量制限</label>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input type="range" id="maxVolumeLimit" min="0.2" max="1.0" step="0.01" value="1.0" style="flex:1;">
+                            <span id="maxVolumeLimitValue" style="min-width:40px; text-align:right;">100%</span>
+                        </div>
+                        <small style="color: var(--theme-text-secondary); font-size: 12px;">スピーカー保護や大音量対策に使用します</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">スリープタイマー</label>
+                        <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleep15">15分</button>
+                            <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleep30">30分</button>
+                            <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleep45">45分</button>
+                            <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleep60">60分</button>
+                            <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;" id="sleepCancel">キャンセル</button>
+                        </div>
+                        <div id="sleepTimerStatus" style="margin-top: 8px; font-size: 12px; color: var(--theme-text-secondary);"></div>
+                    </div>
                 </div>
-                <div id="sleepTimerStatus" style="margin-top: 8px; font-size: 12px; color: var(--theme-text-secondary);"></div>
+
+                <!-- ⌨️ キーボードショートカットタブ -->
+                <div class="settings-panel" id="keyboard-panel" role="tabpanel" aria-labelledby="keyboard-tab">
+                    <div style="margin-bottom: 16px;">
+                        <h4 style="margin-bottom: 12px;">再生制御</h4>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <tr style="border-bottom: 1px solid var(--theme-border);">
+                                <td style="padding: 8px;">Space</td>
+                                <td style="text-align: right; color: var(--theme-text-secondary);">再生／一時停止</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--theme-border);">
+                                <td style="padding: 8px;">←  →</td>
+                                <td style="text-align: right; color: var(--theme-text-secondary);">前後にシーク</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--theme-border);">
+                                <td style="padding: 8px;">↑  ↓</td>
+                                <td style="text-align: right; color: var(--theme-text-secondary);">音量調整</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <h4 style="margin-bottom: 12px;">UI制御</h4>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <tr style="border-bottom: 1px solid var(--theme-border);">
+                                <td style="padding: 8px;">Esc</td>
+                                <td style="text-align: right; color: var(--theme-text-secondary);">モーダル／メニューを閉じる</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--theme-border);">
+                                <td style="padding: 8px;">Ctrl + S</td>
+                                <td style="text-align: right; color: var(--theme-text-secondary);">設定を保存</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--theme-border);">
+                                <td style="padding: 8px;">Ctrl + A</td>
+                                <td style="text-align: right; color: var(--theme-text-secondary);">すべてを選択</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 💾 データタブ -->
+                <div class="settings-panel" id="data-panel" role="tabpanel" aria-labelledby="data-tab">
+                    <div class="form-group">
+                        <h4 style="margin-bottom: 12px;">バックアップ &amp; リストア</h4>
+                        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                            <button class="btn btn-secondary" style="flex: 1; padding: 10px;" id="backupBtn">
+                                💾 バックアップ作成
+                            </button>
+                            <button class="btn btn-secondary" style="flex: 1; padding: 10px;" id="restoreBtn">
+                                📂 バックアップから復元
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <h4 style="margin-bottom: 12px;">データ管理</h4>
+                        <button class="btn btn-secondary" style="width: 100%; padding: 10px; margin-bottom: 8px;" id="exportSettingsBtn">
+                            📊 設定をエクスポート
+                        </button>
+                        <button class="btn btn-secondary" style="width: 100%; padding: 10px; margin-bottom: 8px;" id="clearHistoryBtn">
+                            🗑️ 再生履歴をクリア
+                        </button>
+                        <button class="btn btn-secondary" style="width: 100%; padding: 10px; margin-bottom: 8px;" id="resetSettingsBtn">
+                            🔄 設定をリセット
+                        </button>
+                        <button class="btn btn-secondary" style="width: 100%; padding: 10px; background: #ef4444; color: white;" id="deleteAllBtn">
+                            🔴 すべてのデータを削除
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -456,6 +668,7 @@
                 <button class="playlist-action-btn" id="editPlaylistBtn" style="width: 100%; padding: 12px 16px; border: none; background: transparent; text-align: left; cursor: pointer; border-bottom: 1px solid var(--theme-border); font-size: 14px;">✎ 編集</button>
                 <button class="playlist-action-btn" id="duplicatePlaylistBtn" style="width: 100%; padding: 12px 16px; border: none; background: transparent; text-align: left; cursor: pointer; border-bottom: 1px solid var(--theme-border); font-size: 14px;">📋 複製</button>
                 <button class="playlist-action-btn" id="exportPlaylistBtn" style="width: 100%; padding: 12px 16px; border: none; background: transparent; text-align: left; cursor: pointer; border-bottom: 1px solid var(--theme-border); font-size: 14px;">⬇ エクスポート</button>
+                <button class="playlist-action-btn" id="sharePlaylistBtn" style="width: 100%; padding: 12px 16px; border: none; background: transparent; text-align: left; cursor: pointer; border-bottom: 1px solid var(--theme-border); font-size: 14px;">📤 共有</button>
                 <button class="playlist-action-btn" id="deletePlaylistBtn" style="width: 100%; padding: 12px 16px; border: none; background: transparent; text-align: left; cursor: pointer; color: #ef4444; font-size: 14px;">🗑 削除</button>
             </div>
         </div>
@@ -466,52 +679,376 @@
     
     <!-- UI イベントハンドラー -->
     <script>
-        // モバイルメニュー
-        document.getElementById('mobileMenuBtn').addEventListener('click', () => {
-            document.getElementById('sidebar').classList.toggle('mobile-open');
+        // 🔧 モバイルメニュー＆オーバーレイ管理
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+
+        function closeMobileMenu() {
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+        }
+
+        function openMobileMenu() {
+            sidebar.classList.add('mobile-open');
+            overlay.classList.add('active');
+        }
+
+        const addAppListener = (el, ev, handler, opts) => {
+            if (window.harmonia && typeof window.harmonia.addTrackedListener === 'function') {
+                window.harmonia.addTrackedListener(el, ev, handler, opts);
+            } else {
+                el.addEventListener(ev, handler, opts);
+            }
+        };
+
+        addAppListener(mobileMenuBtn, 'click', () => {
+            if (sidebar.classList.contains('mobile-open')) {
+                closeMobileMenu();
+            } else {
+                openMobileMenu();
+            }
         });
+
+        // ✨ オーバーレイクリックでメニュー閉じる
+        addAppListener(overlay, 'click', closeMobileMenu);
 
         // ビュー切り替え
         document.querySelectorAll('.sidebar-item').forEach(item => {
-            item.addEventListener('click', () => {
+            addAppListener(item, 'click', () => {
                 const viewName = item.dataset.view;
                 window.harmonia.ui.switchView(viewName);
                 
                 // モバイルでサイドバーを閉じる
                 if (window.innerWidth <= 768) {
-                    document.getElementById('sidebar').classList.remove('mobile-open');
+                    closeMobileMenu();
                 }
             });
         });
 
+        // ⌘ Escキーでサイドバーを閉じる
+        addAppListener(document, 'keydown', (e) => {
+            if (e.key === 'Escape' && sidebar.classList.contains('mobile-open')) {
+                closeMobileMenu();
+            }
+        });
+
         // モーダル操作
-        document.getElementById('uploadBtn').addEventListener('click', () => {
+        addAppListener(document.getElementById('uploadBtn'), 'click', () => {
             window.harmonia.ui.openModal('uploadModal');
         });
-        document.getElementById('createPlaylistBtn').addEventListener('click', () => {
+        addAppListener(document.getElementById('createPlaylistBtn'), 'click', () => {
             window.harmonia.ui.openModal('playlistManagementModal');
         });
-        document.getElementById('settingsBtn').addEventListener('click', () => {
+        addAppListener(document.getElementById('settingsBtn'), 'click', () => {
             window.harmonia.ui.openModal('settingsModal');
         });
-        document.getElementById('aboutBtn').addEventListener('click', () => {
+        addAppListener(document.getElementById('aboutBtn'), 'click', () => {
             window.harmonia.ui.openModal('aboutModal');
         });
 
-        document.getElementById('closeUploadModal').addEventListener('click', () => {
+        addAppListener(document.getElementById('closeUploadModal'), 'click', () => {
             window.harmonia.ui.closeModal('uploadModal');
         });
-        document.getElementById('closeSettingsModal').addEventListener('click', () => {
+        addAppListener(document.getElementById('closeSettingsModal'), 'click', () => {
             window.harmonia.ui.closeModal('settingsModal');
         });
-        document.getElementById('closeAboutModal').addEventListener('click', () => {
+        addAppListener(document.getElementById('closeAboutModal'), 'click', () => {
             window.harmonia.ui.closeModal('aboutModal');
         });
 
         // プレイリスト管理モーダル
-        document.getElementById('closePlaylistModal').addEventListener('click', () => {
+        addAppListener(document.getElementById('closePlaylistModal'), 'click', () => {
             window.harmonia.ui.closeModal('playlistManagementModal');
         });
+
+        // プレイリスト作成フォーム送信
+        const createPlaylistSubmitBtn = document.getElementById('createPlaylistSubmitBtn');
+        if (createPlaylistSubmitBtn) {
+            addAppListener(createPlaylistSubmitBtn, 'click', async () => {
+                const name = document.getElementById('playlistNameInput').value.trim();
+                const desc = document.getElementById('playlistDescInput').value.trim();
+                const color = document.getElementById('playlistColorInput').value || '#6366f1';
+
+                if (!name) {
+                    window.harmonia.ui.showNotification('プレイリスト名を入力してください', 'error');
+                    return;
+                }
+
+                try {
+                    if (window.harmonia && typeof window.harmonia.createPlaylist === 'function') {
+                        await window.harmonia.createPlaylist(name, desc, { color });
+                    } else if (window.harmonia && window.harmonia.playlistManager) {
+                        await window.harmonia.playlistManager.createPlaylist(name, desc, { color });
+                    }
+
+                    window.harmonia.ui.showNotification('✅ プレイリストを作成しました', 'success');
+                    window.harmonia.ui.closeModal('playlistManagementModal');
+                    window.harmonia.renderPlaylists?.();
+                } catch (err) {
+                    console.error('Failed to create playlist', err);
+                    window.harmonia.ui.showNotification('プレイリスト作成に失敗しました', 'error');
+                }
+            });
+        }
+
+        // ✨ ビジュアライザースタイル変更
+        addAppListener(document.getElementById('visualizerStyle'), 'change', (e) => {
+            const style = e.target.value;
+            document.dispatchEvent(new CustomEvent('harmonia:setVisualizerStyle', {
+                detail: style
+            }));
+            window.harmonia?.ui.showNotification(`✅ ビジュアライザーを「${e.target.options[e.target.selectedIndex].text}」に変更しました`, 'success');
+        });
+
+        // ミニプレイヤー位置変更
+        const miniPosSelect = document.getElementById('miniPlayerPosition');
+        if (miniPosSelect) {
+            addAppListener(miniPosSelect, 'change', (e) => {
+                const value = e.target.value;
+                document.dispatchEvent(new CustomEvent('harmonia:updateSetting', {
+                    detail: { key: 'miniPlayerPosition', value }
+                }));
+                // 即時反映（冗長だが UI 応答性向上）
+                try { document.body.setAttribute('data-mini-position', value); } catch (err) {}
+                if (window.harmonia && window.harmonia.ui) window.harmonia.ui.showNotification(`✅ ミニプレイヤー位置を「${value}」に変更しました`, 'success');
+            });
+
+            // 初期値を保存された設定から反映（window.harmonia の初期化を待つ）
+            (function waitForHarmoniaInit() {
+                const apply = () => {
+                    try {
+                        const settings = window.harmonia?.state?.get('settings');
+                        if (settings && settings.miniPlayerPosition) {
+                            miniPosSelect.value = settings.miniPlayerPosition;
+                            document.body.setAttribute('data-mini-position', settings.miniPlayerPosition);
+                        }
+                    } catch (e) {}
+                };
+
+                if (window.harmonia && window.harmonia.state) {
+                    apply();
+                } else {
+                    let waited = 0;
+                    const iv = setInterval(() => {
+                        if (window.harmonia && window.harmonia.state) {
+                            apply();
+                            clearInterval(iv);
+                        }
+                        waited += 200;
+                        if (waited > 10000) clearInterval(iv);
+                    }, 200);
+                }
+            })();
+        }
+
+        // ✨ 設定パネルのタブ機能
+        document.querySelectorAll('.settings-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                
+                // タブボタンのアクティブ状態を更新
+                document.querySelectorAll('.settings-tab').forEach(t => {
+                    t.classList.remove('active');
+                });
+                tab.classList.add('active');
+                
+                // パネルの表示を更新
+                document.querySelectorAll('.settings-panel').forEach(panel => {
+                    panel.classList.remove('active');
+                });
+                document.getElementById(tabName + '-panel').classList.add('active');
+            });
+        });
+
+        // ✨ 10バンドEQスライダー処理
+        document.querySelectorAll('.equalizer-10band .eq-slider').forEach((slider, index) => {
+            slider.addEventListener('input', (e) => {
+                const band = parseInt(e.target.dataset.band);
+                const value = parseInt(e.target.value);
+                
+                // 値表示を更新
+                e.target.parentElement.querySelector('.eq-value').textContent = value + 'dB';
+                
+                // イベントを発射してapp.jsで処理
+                document.dispatchEvent(new CustomEvent('harmonia:setEQBand', {
+                    detail: { band, gain: value }
+                }));
+            });
+        });
+
+        // ✨ EQプリセット機能
+        const eqPresets = {
+            'flat': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'pop': [1, 2, -2, -3, -1, -1, 0, 2, 4, 4],
+            'rock': [5, 3, -2, -3, -1, 1, 3, 5, 7, 8],
+            'jazz': [3, 2, 1, 2, 0, -1, -2, 1, 3, 5],
+            'classical': [4, 3, 0, -2, -2, -1, -1, 0, 4, 6],
+            'edm': [6, 5, -1, -2, -1, 0, -1, 3, 6, 8]
+        };
+
+        document.querySelectorAll('.eq-preset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const preset = btn.dataset.preset;
+                const gains = eqPresets[preset];
+                
+                if (gains) {
+                    // すべてのスライダーを設定
+                    document.querySelectorAll('.equalizer-10band .eq-slider').forEach((slider, index) => {
+                        slider.value = gains[index];
+                        slider.parentElement.querySelector('.eq-value').textContent = gains[index] + 'dB';
+                        
+                        // イベントを発射
+                        document.dispatchEvent(new CustomEvent('harmonia:setEQBand', {
+                            detail: { band: index, gain: gains[index] }
+                        }));
+                    });
+                    
+                    // プリセットボタンのアクティブ状態
+                    document.querySelectorAll('.eq-preset').forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    btn.classList.add('active');
+                    
+                    window.harmonia?.ui.showNotification(`✅ ${btn.textContent} プリセットを適用しました`, 'success');
+                }
+            });
+        });
+
+        // EQリセット
+        document.getElementById('resetEqBtn').addEventListener('click', () => {
+            document.querySelectorAll('.equalizer-10band .eq-slider').forEach((slider, index) => {
+                slider.value = 0;
+                slider.parentElement.querySelector('.eq-value').textContent = '0dB';
+                
+                document.dispatchEvent(new CustomEvent('harmonia:setEQBand', {
+                    detail: { band: index, gain: 0 }
+                }));
+            });
+            
+            // プリセットボタンをリセット
+            document.querySelectorAll('.eq-preset').forEach(b => {
+                b.classList.remove('active');
+            });
+            document.querySelector('[data-preset="flat"]').classList.add('active');
+            
+            window.harmonia?.ui.showNotification('✅ イコライザーをリセットしました', 'success');
+        });
+
+        // 初期化: 保存済み設定をUIに反映
+        (function applySavedSettingsToUI() {
+            try {
+                const settings = window.harmonia?.state?.get('settings') || {};
+
+                // テーマ
+                if (settings.theme) {
+                    document.body.setAttribute('data-theme', settings.theme);
+                    document.querySelectorAll('.theme-option').forEach(opt => {
+                        opt.classList.remove('active');
+                        opt.setAttribute('aria-checked', 'false');
+                        if (opt.dataset.theme === settings.theme) {
+                            opt.classList.add('active');
+                            opt.setAttribute('aria-checked', 'true');
+                        }
+                    });
+                }
+
+                // ビジュアライザー
+                const visualizerToggle = document.getElementById('visualizerToggle');
+                if (visualizerToggle && typeof settings.visualizerEnabled === 'boolean') {
+                    visualizerToggle.checked = settings.visualizerEnabled;
+                }
+
+                // EQスライダー
+                if (Array.isArray(settings.eq10Band)) {
+                    document.querySelectorAll('.equalizer-10band .eq-slider').forEach((slider, idx) => {
+                        const v = settings.eq10Band[idx] ?? 0;
+                        slider.value = v;
+                        const valueEl = slider.parentElement.querySelector('.eq-value');
+                        if (valueEl) valueEl.textContent = v + 'dB';
+                    });
+                }
+
+                // EQプリセット状態
+                document.querySelectorAll('.eq-preset').forEach(b => b.classList.remove('active'));
+                if (settings.eqPreset) {
+                    const presetBtn = document.querySelector(`.eq-preset[data-preset="${settings.eqPreset}"]`);
+                    if (presetBtn) presetBtn.classList.add('active');
+                }
+            } catch (err) {
+                console.warn('Failed to apply saved settings to UI:', err);
+            }
+        })();
+
+        // ✨ データ管理ボタン
+        document.getElementById('backupBtn').addEventListener('click', () => {
+            window.harmonia?.ui.showNotification('💾 バックアップを作成しています...', 'info');
+            // バックアップ処理はapp.jsで実装
+            document.dispatchEvent(new CustomEvent('harmonia:exportFullBackup'));
+        });
+
+        document.getElementById('restoreBtn').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            document.dispatchEvent(new CustomEvent('harmonia:importBackup', {
+                                detail: data
+                            }));
+                        } catch (error) {
+                            window.harmonia?.ui.showNotification('❌ バックアップファイルが無効です', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            input.click();
+        });
+
+        document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+            if (confirm('再生履歴を削除しますか？')) {
+                document.dispatchEvent(new CustomEvent('harmonia:clearPlayHistory'));
+                window.harmonia?.ui.showNotification('🗑️ 再生履歴をクリアしました', 'success');
+            }
+        });
+
+        document.getElementById('resetSettingsBtn').addEventListener('click', () => {
+            if (confirm('すべての設定をデフォルトにリセットしますか？')) {
+                document.dispatchEvent(new CustomEvent('harmonia:resetSettings'));
+                window.harmonia?.ui.showNotification('🔄 設定をリセットしました', 'success');
+            }
+        });
+
+        document.getElementById('deleteAllBtn').addEventListener('click', () => {
+            if (confirm('⚠️ すべてのデータを削除します。この操作は取り消せません。本当によろしいですか？')) {
+                if (confirm('本当に削除しますか？')) {
+                    document.dispatchEvent(new CustomEvent('harmonia:deleteAllData'));
+                    window.harmonia?.ui.showNotification('🔴 すべてのデータを削除しました', 'success');
+                }
+            }
+        });
+
+        document.getElementById('exportSettingsBtn').addEventListener('click', () => {
+            document.dispatchEvent(new CustomEvent('harmonia:exportPlaylists'));
+            window.harmonia?.ui.showNotification('📊 設定をエクスポートしています...', 'info');
+        });
+
+        // 再生速度ボタン
+        document.querySelectorAll('#playback-panel .btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const speed = btn.textContent.replace('x', '');
+                document.getElementById('playbackRateSlider').value = parseFloat(speed);
+                document.getElementById('playbackRateSlider').dispatchEvent(new Event('input'));
+            });
+        });
+
+        // プレイリスト管理モーダル
         document.getElementById('cancelPlaylistBtn').addEventListener('click', () => {
             window.harmonia.ui.closeModal('playlistManagementModal');
         });
@@ -587,6 +1124,24 @@
             }
         });
 
+        // プレイリスト共有
+        const sharePlaylistBtn = document.getElementById('sharePlaylistBtn');
+        if (sharePlaylistBtn) {
+            sharePlaylistBtn.addEventListener('click', async () => {
+                const playlistId = window.harmonia._currentPlaylistId;
+                if (!playlistId) return;
+                try {
+                    if (window.harmonia && typeof window.harmonia.sharePlaylist === 'function') {
+                        await window.harmonia.sharePlaylist(playlistId);
+                    }
+                    window.harmonia.ui.closeModal('playlistActionsModal');
+                } catch (err) {
+                    console.error('❌ 共有失敗:', err);
+                    window.harmonia.ui.showNotification('共有に失敗しました', 'error');
+                }
+            });
+        }
+
         document.getElementById('deletePlaylistBtn').addEventListener('click', async () => {
             const playlistId = window.harmonia._currentPlaylistId;
             if (!playlistId) return;
@@ -631,6 +1186,15 @@
             const newMode = modes[(currentIndex + 1) % modes.length];
             window.harmonia.state.updateSettings({ repeatMode: newMode });
         });
+        // トラック共有ボタン
+        const shareTrackBtn = document.getElementById('shareTrackBtn');
+        if (shareTrackBtn) {
+            shareTrackBtn.addEventListener('click', () => {
+                if (window.harmonia && typeof window.harmonia.shareCurrentTrack === 'function') {
+                    window.harmonia.shareCurrentTrack();
+                }
+            });
+        }
 
         // 検索
         document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -642,33 +1206,7 @@
             window.harmonia.state.clearQueue();
         });
 
-        // イコライザー
-        document.getElementById('eqLow').addEventListener('input', (e) => {
-            const value = parseFloat(e.target.value);
-            window.harmonia.audio.setEqualizer('low', value);
-            document.getElementById('eqLowValue').textContent = value + 'dB';
-            window.harmonia.state.updateSettings({ eqLow: value });
-        });
-        document.getElementById('eqMid').addEventListener('input', (e) => {
-            const value = parseFloat(e.target.value);
-            window.harmonia.audio.setEqualizer('mid', value);
-            document.getElementById('eqMidValue').textContent = value + 'dB';
-            window.harmonia.state.updateSettings({ eqMid: value });
-        });
-        document.getElementById('eqHigh').addEventListener('input', (e) => {
-            const value = parseFloat(e.target.value);
-            window.harmonia.audio.setEqualizer('high', value);
-            document.getElementById('eqHighValue').textContent = value + 'dB';
-            window.harmonia.state.updateSettings({ eqHigh: value });
-        });
-        document.getElementById('resetEqBtn').addEventListener('click', () => {
-            window.harmonia.audio.resetEqualizer();
-            ['eqLow', 'eqMid', 'eqHigh'].forEach(id => {
-                document.getElementById(id).value = 0;
-                document.getElementById(id + 'Value').textContent = '0dB';
-            });
-            window.harmonia.state.updateSettings({ eqLow: 0, eqMid: 0, eqHigh: 0 });
-        });
+        // ✨ 10バンドイコライザーはタブパネルで実装済み
 
         // テーマ切り替え
         document.querySelectorAll('.theme-option').forEach(option => {
@@ -682,6 +1220,11 @@
                 option.classList.add('active');
                 option.setAttribute('aria-checked', 'true');
                 window.harmonia.state.updateSettings({ theme });
+                // 永続化: 設定をDBに保存
+                if (window.harmonia && typeof window.harmonia.saveSettings === 'function') {
+                    window.harmonia.saveSettings(window.harmonia.state.get('settings'))
+                        .catch(err => console.warn('Failed to save settings:', err));
+                }
             });
         });
 
@@ -701,6 +1244,52 @@
         document.getElementById('gaplessToggle').addEventListener('change', (e) => {
             window.harmonia.state.updateSettings({ gaplessEnabled: e.target.checked });
         });
+
+        // 追加設定: 表示密度 / ミニプレイヤー位置 / アクセントカラー
+        const compactDensityEl = document.getElementById('compactDensity');
+        if (compactDensityEl) {
+            compactDensityEl.addEventListener('change', (e) => {
+                window.harmonia.state.updateSettings({ compactDensity: e.target.value });
+                document.body.setAttribute('data-density', e.target.value);
+                if (window.harmonia && typeof window.harmonia.saveSettings === 'function') window.harmonia.saveSettings(window.harmonia.state.get('settings'));
+            });
+        }
+
+        const miniPlayerPositionEl = document.getElementById('miniPlayerPosition');
+        if (miniPlayerPositionEl) {
+            miniPlayerPositionEl.addEventListener('change', (e) => {
+                window.harmonia.state.updateSettings({ miniPlayerPosition: e.target.value });
+                if (window.harmonia && typeof window.harmonia.saveSettings === 'function') window.harmonia.saveSettings(window.harmonia.state.get('settings'));
+            });
+        }
+
+        document.querySelectorAll('.theme-accent').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const accent = btn.dataset.accent;
+                window.harmonia.state.updateSettings({ themeAccent: accent });
+                if (window.harmonia && typeof window.harmonia.saveSettings === 'function') window.harmonia.saveSettings(window.harmonia.state.get('settings'));
+            });
+        });
+
+        const customAccentPicker = document.getElementById('customAccentPicker');
+        if (customAccentPicker) {
+            customAccentPicker.addEventListener('input', (e) => {
+                window.harmonia.state.updateSettings({ themeAccent: e.target.value });
+                if (window.harmonia && typeof window.harmonia.saveSettings === 'function') window.harmonia.saveSettings(window.harmonia.state.get('settings'));
+            });
+        }
+
+        // イコライザー有効化トグル
+        const eqEnabledToggle = document.getElementById('eqEnabledToggle');
+        if (eqEnabledToggle) {
+            eqEnabledToggle.addEventListener('change', (e) => {
+                window.harmonia.state.updateSettings({ eqEnabled: e.target.checked });
+                if (!e.target.checked) {
+                    // オフならUIのスライダーを無効化（CSS 側で見た目を変える想定）
+                }
+                if (window.harmonia && typeof window.harmonia.saveSettings === 'function') window.harmonia.saveSettings(window.harmonia.state.get('settings'));
+            });
+        }
 
         // 🔋 省エネモード（新機能）
         document.getElementById('powerSaveToggle').addEventListener('change', (e) => {
@@ -727,6 +1316,43 @@
             window.harmonia.setPlaybackRate(rate);
             document.getElementById('playbackRateValue').textContent = rate.toFixed(2) + 'x';
         });
+
+        // クロスフェード時間スライダー
+        const crossfadeDurationEl = document.getElementById('crossfadeDuration');
+        if (crossfadeDurationEl) {
+            const crossfadeValueEl = document.getElementById('crossfadeDurationValue');
+            crossfadeDurationEl.addEventListener('input', (e) => {
+                const sec = parseInt(e.target.value, 10);
+                if (crossfadeValueEl) crossfadeValueEl.textContent = sec + 's';
+                window.harmonia.state.updateSettings({ crossfadeDuration: sec });
+                if (window.harmonia && typeof window.harmonia.saveSettings === 'function') window.harmonia.saveSettings(window.harmonia.state.get('settings'));
+            });
+        }
+
+        // ラウドネス正規化
+        const loudnessNormalizationEl = document.getElementById('loudnessNormalizationToggle');
+        if (loudnessNormalizationEl) {
+            loudnessNormalizationEl.addEventListener('change', (e) => {
+                window.harmonia.state.updateSettings({ loudnessNormalization: e.target.checked });
+                if (window.harmonia && typeof window.harmonia.saveSettings === 'function') window.harmonia.saveSettings(window.harmonia.state.get('settings'));
+            });
+        }
+
+        // 最大音量制限
+        const maxVolumeLimitEl = document.getElementById('maxVolumeLimit');
+        if (maxVolumeLimitEl) {
+            const maxVolumeLimitValueEl = document.getElementById('maxVolumeLimitValue');
+            maxVolumeLimitEl.addEventListener('input', (e) => {
+                const v = parseFloat(e.target.value);
+                if (maxVolumeLimitValueEl) maxVolumeLimitValueEl.textContent = Math.round(v * 100) + '%';
+                window.harmonia.state.updateSettings({ maxVolumeLimit: v });
+                const currentVolume = window.harmonia.state.get('settings').volume || 0.7;
+                if (currentVolume > v) {
+                    window.harmonia.setVolume(v);
+                }
+                if (window.harmonia && typeof window.harmonia.saveSettings === 'function') window.harmonia.saveSettings(window.harmonia.state.get('settings'));
+            });
+        }
 
         // スリープタイマー
         document.getElementById('sleep15').addEventListener('click', () => {
@@ -794,6 +1420,62 @@
                 .then(reg => console.log('✅ Service Worker registered'))
                 .catch(err => console.log('❌ Service Worker registration failed:', err));
         }
+
+        // 設定UIを保存済み設定で初期化する（app が初期化されるまで待つ）
+        (function applySavedSettingsUI(timeout = 5000) {
+            const start = Date.now();
+
+            const tryApply = () => {
+                const appObj = window.harmonia;
+                if (appObj && appObj.state && typeof appObj.state.get === 'function') {
+                    const settings = appObj.state.get('settings') || {};
+
+                    // テーマ
+                    if (settings.theme) document.body.setAttribute('data-theme', settings.theme);
+                    // density
+                    if (settings.compactDensity) document.body.setAttribute('data-density', settings.compactDensity);
+                    // mini player position
+                    if (settings.miniPlayerPosition) document.body.setAttribute('data-mini-position', settings.miniPlayerPosition);
+                    // visualizer quality
+                    if (settings.visualizerQuality) document.body.setAttribute('data-visualizer-quality', settings.visualizerQuality);
+                    // accent
+                    if (settings.themeAccent) {
+                        try { document.documentElement.style.setProperty('--theme-accent', settings.themeAccent); } catch (e) {}
+                    }
+
+                    // コントロールを更新
+                    const setIf = (id, value) => { const el = document.getElementById(id); if (el) el.value = value; };
+                    const checkIf = (id, bool) => { const el = document.getElementById(id); if (el) el.checked = !!bool; };
+
+                    checkIf('visualizerToggle', settings.visualizerEnabled);
+                    setIf('visualizerStyle', settings.visualizerStyle || 'bars');
+                    setIf('compactDensity', settings.compactDensity || 'comfortable');
+                    setIf('miniPlayerPosition', settings.miniPlayerPosition || 'bottom');
+                    const customAccent = document.getElementById('customAccentPicker'); if (customAccent && settings.themeAccent) customAccent.value = settings.themeAccent;
+                    checkIf('eqEnabledToggle', settings.eqEnabled);
+                    setIf('crossfadeDuration', settings.crossfadeDuration || 3); const cfv = document.getElementById('crossfadeDurationValue'); if (cfv) cfv.textContent = (settings.crossfadeDuration || 3) + 's';
+                    checkIf('loudnessNormalizationToggle', settings.loudnessNormalization);
+                    setIf('maxVolumeLimit', settings.maxVolumeLimit || 1.0); const mvv = document.getElementById('maxVolumeLimitValue'); if (mvv) mvv.textContent = Math.round((settings.maxVolumeLimit || 1.0) * 100) + '%';
+
+                    // 適用: 現在音量が最大制限を超えていたら調整
+                    try {
+                        const curVol = appObj.state.get('settings').volume || appObj.state.get('volume') || 0.7;
+                        const maxV = settings.maxVolumeLimit || 1.0;
+                        if (curVol > maxV && appObj.setVolume) appObj.setVolume(maxV);
+                    } catch (e) {}
+
+                    return; // 完了
+                }
+
+                if (Date.now() - start < timeout) {
+                    requestAnimationFrame(tryApply);
+                } else {
+                    console.warn('applySavedSettingsUI: app not ready, skipped initialization');
+                }
+            };
+
+            tryApply();
+        })();
     </script>
 </body>
 </html>

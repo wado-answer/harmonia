@@ -20,6 +20,10 @@ python -m http.server 8000
 http://localhost:8000
 ```
 
+※ 公開版のデモは GitHub Pages にホストされています:
+
+https://wado-answer.github.io/harmonia/
+
 詳細は [GUIDE.md](GUIDE.md) を参照
 
 ---

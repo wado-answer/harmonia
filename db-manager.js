@@ -9,22 +9,61 @@ export class DBManager {
     async init() {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(this.dbName, this.version);
+            let settled = false;
+
+            const cleanup = () => {
+                request.onerror = null;
+                request.onsuccess = null;
+                request.onupgradeneeded = null;
+                request.onblocked = null;
+                if (timeoutId) clearTimeout(timeoutId);
+            };
 
             request.onerror = () => {
+                if (settled) return;
+                settled = true;
                 const error = new Error('Failed to open database');
                 error.originalError = request.error;
+                cleanup();
+                reject(error);
+            };
+
+            request.onblocked = () => {
+                if (settled) return;
+                settled = true;
+                const error = new Error('Database open blocked by another connection');
+                cleanup();
                 reject(error);
             };
 
             request.onsuccess = () => {
+                if (settled) return;
+                settled = true;
                 this.db = request.result;
+
+                // 他タブなどでバージョン変更が発生したら安全に閉じる
+                try {
+                    this.db.onversionchange = () => {
+                        console.warn('IndexedDB version change detected. Closing DB connection.');
+                        try {
+                            this.db.close();
+                        } catch (e) {
+                            console.warn('Error closing DB on versionchange:', e);
+                        }
+                        this.db = null;
+                    };
+                } catch (e) {
+                    // 一部ブラウザでは設定不可
+                }
+
                 console.log('✅ Database initialized');
+                cleanup();
                 resolve(this.db);
             };
 
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                
+
                 // オブジェクトストアを作成（まだ存在しない場合）
                 this._createStoreIfNotExists(db, 'tracks', { keyPath: 'id' });
                 this._createStoreIfNotExists(db, 'playlists', { keyPath: 'id' });
@@ -36,6 +75,16 @@ export class DBManager {
                 this._createStoreIfNotExists(db, 'bookmarks', { keyPath: 'id', autoIncrement: true });
                 this._createStoreIfNotExists(db, 'playHistory', { keyPath: 'id', autoIncrement: true });
             };
+
+            // タイムアウト（稀に open がハングするケースに備える）
+            const timeoutId = setTimeout(() => {
+                if (settled) return;
+                settled = true;
+                const error = new Error('Database open timed out');
+                cleanup();
+                try { request.result && request.result.close && request.result.close(); } catch (e) {}
+                reject(error);
+            }, 15000);
         });
     }
 

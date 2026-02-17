@@ -1,92 +1,8 @@
-// メインアプリケーション
-import { stateManager } from './state-manager.js';
-import { dbManager } from './db-manager.js';
-import { audioEngine } from './audio-engine.js';
-import { id3Reader } from './id3-reader.js';
-import { createUIManager } from './ui-manager.js';
-import { lrcParser } from './lrc-parser.js';
-import { smartPlaylistEngine } from './smart-playlist.js';
-import { visualizerEngine as VisualizerEngine } from './visualizer-engine.js';
-import { cloudStorageManager, dataExporter } from './cloud-storage.js';
-import { createBackgroundPlaybackManager } from './background-playback.js';
-import { createPlaylistManager } from './playlist-manager.js';
+    // クラスの終わりは既存の destroy() を使用します。
+    // （重複していたクリーンアップは既存の `destroy()` を使用します）
+    // (重複していた破棄ロジックは上部の destroy() を使用します)
 
-class HarmoniaApp {
-    constructor() {
-        this.state = stateManager;
-        this.db = dbManager;
-        this.audio = audioEngine;
-        this.ui = null;
-        
-        // バックグラウンド再生マネージャー
-        this.backgroundPlaybackManager = null;
-        
-        // ビジュアライザー
-        this.visualizerEngine = null;
-        this.visualizerInterval = null;
-        this.progressInterval = null;
-        
-        // その他の機能
-        this.abRepeatState = { stage: 'none' };
-        this.sleepTimerInterval = null;
-        this.lyricsUpdateInterval = null;
-        
-        // イースターエッグ
-        this.easterEggsTriggered = new Set();
-        this.konamiCode = [];
-        this.clickCount = 0;
-        this.clickTimer = null;
-        
-        // クラウド連携
-        this.cloudStorage = cloudStorageManager;
-
-        // プレイリストマネージャー（完全実装版）
-        this.playlistManager = null;
-        this._currentPlaylistId = null;
-        
-        // パフォーマンス監視
-        this.performanceMetrics = {
-            loadTime: 0,
-            renderTime: 0,
-            lastUpdate: Date.now()
-        };
-        
-        // 🔴 バグ修正: イベントリスナーのメモリリーク対策
-        this.eventListeners = [];
-        this.audioListeners = [];
-        
-        // 🔴 バグ修正: 非同期処理の競合状態対策
-        this.isLoadingTrack = false;
-        
-        // 🔴 バグ修正: ブラウザ互換性チェック
-        this.browserCapabilities = this._checkBrowserCapabilities();
-    }
-
-    _checkBrowserCapabilities() {
-        return {
-            audioContext: !!(window.AudioContext || window.webkitAudioContext),
-            indexedDB: !!window.indexedDB,
-            serviceWorker: !!navigator.serviceWorker,
-            blob: !!window.Blob,
-            fileReader: !!window.FileReader
-        };
-    }
-
-    async init() {
-        try {
-            console.log('🎵 Initializing Harmonia...');
-            
-            // 🔴 バグ修正: ブラウザ互換性チェック
-            if (!this.browserCapabilities.indexedDB) {
-                throw new Error('このブラウザはIndexedDBに対応していません');
-            }
-            if (!this.browserCapabilities.audioContext) {
-                throw new Error('このブラウザはWeb Audio APIに対応していません');
-            }
-            
-            // データベース初期化（リトライロジック付き）
-            await this._initDatabaseWithRetry();
-            
+}
             // UI初期化
             this.ui = createUIManager(this.state);
             this.ui.init();
@@ -143,7 +59,7 @@ class HarmoniaApp {
         }
     }
 
-    async _initDatabaseWithRetry(maxRetries = 3) {
+    async _initDatabaseWithRetry(maxRetries = 5) {
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 await this.db.init();
@@ -153,8 +69,12 @@ class HarmoniaApp {
                 if (attempt === maxRetries) {
                     throw error;
                 }
-                // 指数バックオフでリトライ
-                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                // 指数バックオフ + ジッターでリトライ
+                const base = Math.min(30000, Math.pow(2, attempt) * 1000);
+                const jitter = Math.floor(Math.random() * 1000);
+                const wait = base + jitter;
+                console.log(`Waiting ${wait}ms before next DB init attempt`);
+                await new Promise(resolve => setTimeout(resolve, wait));
             }
         }
     }
@@ -301,6 +221,7 @@ class HarmoniaApp {
             ['harmonia:applyEQPreset', (e) => this.applyEQPreset(e.detail)],
             
             ['harmonia:editTrackInfo', (e) => this.editTrackInfo(e.detail.trackId, e.detail.updates)],
+            ['harmonia:deleteTrack', (e) => this.deleteTrack(e.detail)],
             ['harmonia:deleteAllData', () => this.deleteAllData()],
             ['harmonia:clearPlayHistory', () => this.clearPlayHistory()],
             
@@ -346,14 +267,20 @@ class HarmoniaApp {
             ['harmonia:initVisualizer', () => this.initVisualizer()],
         ];
         
-        // イベントリスナーを登録して保存
+        // イベントリスナーを登録して保存（要素を記録）
         listeners.forEach(([event, handler]) => {
             document.addEventListener(event, handler);
-            this.eventListeners.push({ event, handler });
+            this.eventListeners.push({ element: document, event, handler });
         });
 
         // 🎁 イースターエッグ設定
         this.setupEasterEggs();
+    }
+
+    // 登録済みイベントリスナーを追跡して追加するユーティリティ
+    addTrackedListener(element, event, handler, options) {
+        element.addEventListener(event, handler, options);
+        this.eventListeners.push({ element, event, handler, options });
     }
 
     // 🎁 イースターエッグ機能
@@ -361,22 +288,23 @@ class HarmoniaApp {
         // Konami Code (↑↑↓↓←→←→BA)
         const konamiPattern = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
         
-        document.addEventListener('keydown', (e) => {
+        const konamiHandler = (e) => {
             this.konamiCode.push(e.key);
             this.konamiCode = this.konamiCode.slice(-10);
-            
+
             if (JSON.stringify(this.konamiCode) === JSON.stringify(konamiPattern)) {
                 this.triggerKonamiEgg();
                 this.konamiCode = [];
             }
-        });
+        };
+        this.addTrackedListener(document, 'keydown', konamiHandler);
 
         // ロゴクリックでクリック数カウント
         const logoEl = document.querySelector('[data-easter-logo]') || document.querySelector('h1');
         if (logoEl) {
-            logoEl.addEventListener('click', () => {
+            const logoClickHandler = () => {
                 this.clickCount++;
-                
+
                 if (this.clickTimer) clearTimeout(this.clickTimer);
                 this.clickTimer = setTimeout(() => {
                     this.clickCount = 0;
@@ -385,7 +313,8 @@ class HarmoniaApp {
                 if (this.clickCount === 7) {
                     this.triggerHiddenMode();
                 }
-            });
+            };
+            this.addTrackedListener(logoEl, 'click', logoClickHandler);
         }
     }
 
@@ -453,11 +382,12 @@ class HarmoniaApp {
         this.ui.showNotification('🔓 ヒドゥンモード解放！ Fキーでサプライズ', 'info');
 
         // Fキーでサプライズ
-        document.addEventListener('keydown', (e) => {
+        const fKeyHandler = (e) => {
             if (e.key === 'f' || e.key === 'F') {
                 this.triggerSurprise();
             }
-        });
+        };
+        this.addTrackedListener(document, 'keydown', fKeyHandler);
 
         // グローバルメソッド追加
         window.harmonia.secretPlay = () => {
@@ -585,6 +515,32 @@ class HarmoniaApp {
                     settings.eq10Band.forEach((gain, index) => {
                         this.audio.setEQBand(index, gain);
                     });
+                }
+                // 新しい設定項目の反映
+                if (settings.themeAccent) {
+                    try { document.documentElement.style.setProperty('--theme-accent', settings.themeAccent); } catch (e) {}
+                }
+                if (settings.colorScheme) {
+                    document.body.setAttribute('data-color-scheme', settings.colorScheme);
+                }
+                if (settings.compactDensity) {
+                    document.body.setAttribute('data-density', settings.compactDensity);
+                }
+                if (settings.miniPlayerPosition) {
+                    document.body.setAttribute('data-mini-position', settings.miniPlayerPosition);
+                }
+
+                // ビジュアライザー品質の反映
+                if (settings.visualizerQuality && this.visualizerEngine && typeof this.visualizerEngine.setQuality === 'function') {
+                    try { this.visualizerEngine.setQuality(settings.visualizerQuality); } catch (e) { console.warn('Failed to set visualizer quality', e); }
+                }
+
+                // 最大音量制限の反映
+                if (typeof settings.maxVolumeLimit === 'number') {
+                    const currentVol = this.state.get('volume') || 0.7;
+                    if (currentVol > settings.maxVolumeLimit) {
+                        this.setVolume(settings.maxVolumeLimit);
+                    }
                 }
                 
                 // UI更新
@@ -878,16 +834,28 @@ class HarmoniaApp {
     // ビジュアライザー
     startVisualizer() {
         if (!this.state.get('settings').visualizerEnabled) return;
-        
-        // 既存のインターバルを確実にクリア（二重ループ防止）
+        // 既存のビジュアライザーを停止（前回のエンジン/インターバルをクリア）
         this.stopVisualizer();
 
-        this.visualizerInterval = setInterval(() => {
-            const data = this.audio.getVisualizerData();
-            if (data) {
-                this.ui.renderVisualizer(data);
+        // ビジュアライザーエンジンの初期化（初回のみ）
+        try {
+            if (!this.visualizerEngine) {
+                const canvas = document.getElementById('visualizerCanvas');
+                if (!canvas) {
+                    console.warn('🎨 Canvas element not found');
+                    return;
+                }
+
+                this.visualizerEngine = new VisualizerEngine(canvas, this.audio);
+                console.log('🎨 Visualizer engine created');
             }
-        }, 1000 / 60); // 60 FPS
+
+            // エンジンによる requestAnimationFrame ループで描画を一元化
+            this.visualizerEngine.start();
+        } catch (error) {
+            console.error('🎨 Visualizer initialization error:', error);
+            return;
+        }
     }
 
     stopVisualizer() {
@@ -895,6 +863,12 @@ class HarmoniaApp {
             clearInterval(this.visualizerInterval);
             this.visualizerInterval = null;
         }
+        
+        // ビジュアライザーエンジンの停止
+        if (this.visualizerEngine) {
+            this.visualizerEngine.stop();
+        }
+        
         this.ui.stopVisualizer();
     }
 
@@ -1120,14 +1094,18 @@ class HarmoniaApp {
     }
 
     async saveQueue(queue) {
+        const q = Array.isArray(queue) ? queue : this.state.get('queue');
         await this.db.clear('queue');
-        const batch = queue.map((trackId, index) => ({ index, trackId }));
+        const batch = q.map((trackId, index) => ({ index, trackId }));
         await this.db.saveBatch('queue', batch);
     }
 
     // UIレンダリング
     renderUI() {
         const state = this.state.getState();
+        
+        // ✨ ビジュアライザーを初期化
+        this.initVisualizer();
         
         this.ui.renderTracks(
             state.searchQuery ? state.filteredTracks : state.tracks,
@@ -1145,6 +1123,34 @@ class HarmoniaApp {
         
         // プレイリスト表示
         this.renderPlaylists();
+    }
+
+    // ビジュアライザーの初期化（エンジン生成と設定の適用）
+    initVisualizer() {
+        try {
+            const canvas = document.getElementById('visualizerCanvas');
+            if (!canvas) return;
+
+            if (!this.visualizerEngine) {
+                this.visualizerEngine = new VisualizerEngine(canvas, this.audio);
+                console.log('🎨 Visualizer engine initialized (initVisualizer)');
+            }
+
+            const settings = this.state.get('settings') || {};
+            if (settings.visualizerQuality && typeof this.visualizerEngine.setQuality === 'function') {
+                try { this.visualizerEngine.setQuality(settings.visualizerQuality); } catch (e) { console.warn('Failed to set visualizer quality', e); }
+            }
+            if (settings.visualizerStyle) {
+                try { this.setVisualizerStyle(settings.visualizerStyle); } catch (e) { /* ignore */ }
+            }
+
+            // Ensure canvas sizing is correct
+            if (typeof this.visualizerEngine._adjustCanvasResolution === 'function') {
+                try { this.visualizerEngine._adjustCanvasResolution(); } catch (e) { /* ignore */ }
+            }
+        } catch (error) {
+            console.warn('initVisualizer error:', error);
+        }
     }
 
     // プレイリスト レンダリング
@@ -1295,8 +1301,8 @@ class HarmoniaApp {
         this.audioListeners = [];
         
         // カスタムイベントリスナーを削除
-        this.eventListeners.forEach(({ event, handler }) => {
-            document.removeEventListener(event, handler);
+        this.eventListeners.forEach(({ element, event, handler }) => {
+            if (element && event && handler) element.removeEventListener(event, handler);
         });
         this.eventListeners = [];
         
@@ -1375,6 +1381,14 @@ class HarmoniaApp {
 
     // ===== プレイリスト管理 =====
     async createPlaylist(name, description = '') {
+        // Delegate to PlaylistManager when available
+        if (this.playlistManager && typeof this.playlistManager.createPlaylist === 'function') {
+            const p = await this.playlistManager.createPlaylist(name, description);
+            this.ui.showNotification(`プレイリスト「${p.name}」を作成しました`, 'success');
+            return p;
+        }
+
+        // Fallback (legacy inline implementation)
         const playlist = {
             id: Date.now() + Math.random(),
             name,
@@ -1392,6 +1406,12 @@ class HarmoniaApp {
     }
 
     async deletePlaylist(playlistId) {
+        if (this.playlistManager && typeof this.playlistManager.deletePlaylist === 'function') {
+            await this.playlistManager.deletePlaylist(playlistId);
+            this.ui.showNotification('プレイリストを削除しました', 'success');
+            return;
+        }
+
         const playlists = this.state.get('playlists').filter(p => p.id !== playlistId);
         this.state.setState({ playlists });
         await this.db.delete('playlists', playlistId);
@@ -1399,6 +1419,12 @@ class HarmoniaApp {
     }
 
     async addTrackToPlaylist(playlistId, trackId) {
+        if (this.playlistManager && typeof this.playlistManager.addTracksToPlaylist === 'function') {
+            await this.playlistManager.addTracksToPlaylist(playlistId, [trackId]);
+            this.ui.showNotification('プレイリストに追加しました', 'success');
+            return;
+        }
+
         const playlists = this.state.get('playlists');
         const playlist = playlists.find(p => p.id === playlistId);
         
@@ -1412,6 +1438,12 @@ class HarmoniaApp {
     }
 
     async removeTrackFromPlaylist(playlistId, trackId) {
+        if (this.playlistManager && typeof this.playlistManager.removeTracksFromPlaylist === 'function') {
+            await this.playlistManager.removeTracksFromPlaylist(playlistId, [trackId]);
+            this.ui.showNotification('プレイリストから削除しました', 'success');
+            return;
+        }
+
         const playlists = this.state.get('playlists');
         const playlist = playlists.find(p => p.id === playlistId);
         
@@ -1442,6 +1474,90 @@ class HarmoniaApp {
                 // 最初のトラックを再生
                 await this.playTrack(trackIndex);
             }
+        }
+    }
+
+    // ソーシャル共有: 現在のトラックを共有
+    async shareCurrentTrack() {
+        const index = this.state.get('currentTrackIndex');
+        const tracks = this.state.get('tracks') || [];
+        if (index === -1 || !tracks[index]) {
+            if (this.ui) this.ui.showNotification('共有するトラックがありません', 'error');
+            return;
+        }
+
+        const track = tracks[index];
+        const title = track.title || track.name || 'Unknown';
+        const artist = track.artist || 'Unknown Artist';
+        const repoUrl = 'https://github.com/wado-answer/harmonia';
+        const text = `今聴いている曲: ${title} — ${artist}\n${repoUrl}`;
+        const url = (track.url && !track.url.startsWith('blob:')) ? track.url : repoUrl;
+
+        if (navigator.share) {
+            try {
+                await navigator.share({ title, text, url });
+                if (this.ui) this.ui.showNotification('共有に成功しました', 'success');
+            } catch (e) {
+                console.warn('Share failed', e);
+            }
+            return;
+        }
+
+        // フォールバック: Twitter インテントを開き、クリップボードにコピー
+        const twitter = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}${url ? '&url=' + encodeURIComponent(url) : ''}`;
+        try {
+            window.open(twitter, 'share', 'width=600,height=400');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(`${text}${url ? ' ' + url : ''}`);
+                if (this.ui) this.ui.showNotification('共有テキストをコピーしました', 'success');
+            }
+        } catch (e) {
+            console.error('Share fallback failed', e);
+            if (this.ui) this.ui.showNotification('共有に失敗しました', 'error');
+        }
+    }
+
+    // ソーシャル共有: プレイリストを共有
+    async sharePlaylist(playlistId) {
+        const playlists = this.state.get('playlists') || [];
+        const playlist = playlists.find(p => p.id === playlistId);
+        if (!playlist) {
+            if (this.ui) this.ui.showNotification('プレイリストが見つかりません', 'error');
+            return;
+        }
+
+        const tracks = (this.state.get('tracks') || []).filter(t => playlist.tracks.includes(t.id));
+        const preview = tracks.slice(0, 5).map(t => `${t.title || t.name} — ${t.artist || ''}`).join(', ');
+        const repoUrl = 'https://github.com/wado-answer/harmonia';
+        const text = `プレイリスト「${playlist.name}」を共有します: ${preview}${tracks.length > 5 ? ' 他...' : ''}\n${repoUrl}`;
+
+        // Try Web Share with a file if supported
+        try {
+            const payload = { playlist: { id: playlist.id, name: playlist.name, tracks: playlist.tracks }, tracks };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const file = new File([blob], `${playlist.name.replace(/[^a-z0-9_-]/gi, '_')}.json`, { type: 'application/json' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({ title: playlist.name, text, files: [file] });
+                if (this.ui) this.ui.showNotification('プレイリストを共有しました', 'success');
+                return;
+            }
+        } catch (e) {
+            // ignore and fallback
+            console.warn('File share not supported', e);
+        }
+
+        // フォールバック: Twitter にテキストを投げる + クリップボード
+        try {
+            const twitter = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+            window.open(twitter, 'share', 'width=600,height=400');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text + ' ' + location.href);
+                if (this.ui) this.ui.showNotification('共有テキストをコピーしました', 'success');
+            }
+        } catch (e) {
+            console.error('Share playlist failed', e);
+            if (this.ui) this.ui.showNotification('共有に失敗しました', 'error');
         }
     }
 
@@ -1768,10 +1884,39 @@ class HarmoniaApp {
             case 'genre':
                 trackIds = smartPlaylistEngine.byGenre(tracks, params.genre, params.limit);
                 break;
+            case 'artist':
+                trackIds = smartPlaylistEngine.byArtist(tracks, params.artist, params.limit);
+                break;
+            case 'album':
+                trackIds = smartPlaylistEngine.byAlbum(tracks, params.album);
+                break;
             case 'top-played':
                 trackIds = smartPlaylistEngine.topPlayed(tracks, playHistory, params.limit);
                 break;
-            // ... 他のケースも同様
+            case 'recently-added':
+                trackIds = smartPlaylistEngine.recentlyAdded(tracks, params.days, params.limit);
+                break;
+            case 'recently-played':
+                trackIds = smartPlaylistEngine.recentlyPlayed(tracks, playHistory, params.days, params.limit);
+                break;
+            case 'favorites':
+                trackIds = smartPlaylistEngine.favorites(tracks, favorites);
+                break;
+            case 'long-tracks':
+                trackIds = smartPlaylistEngine.longTracks(tracks, params.minDuration, params.limit);
+                break;
+            case 'short-tracks':
+                trackIds = smartPlaylistEngine.shortTracks(tracks, params.maxDuration, params.limit);
+                break;
+            case 'random':
+                trackIds = smartPlaylistEngine.random(tracks, params.count);
+                break;
+            case 'never-played':
+                trackIds = smartPlaylistEngine.neverPlayed(tracks, playHistory, params.limit);
+                break;
+            case 'advanced':
+                trackIds = smartPlaylistEngine.advanced(tracks, params);
+                break;
         }
         
         playlist.tracks = trackIds;
@@ -2078,6 +2223,24 @@ class HarmoniaApp {
             case 'visualizerStyle':
                 this.setVisualizerStyle(value);
                 break;
+            case 'visualizerQuality':
+                if (this.visualizerEngine && typeof this.visualizerEngine.setQuality === 'function') {
+                    this.visualizerEngine.setQuality(value);
+                }
+                document.body.setAttribute('data-visualizer-quality', value);
+                break;
+            case 'compactDensity':
+                document.body.setAttribute('data-density', value);
+                break;
+            case 'miniPlayerPosition':
+                document.body.setAttribute('data-mini-position', value);
+                break;
+            case 'themeAccent':
+                try { document.documentElement.style.setProperty('--theme-accent', value); } catch (e) {}
+                break;
+            case 'maxVolumeLimit':
+                if (this.state.get('volume') > value) this.setVolume(value);
+                break;
             case 'lyricsAutoScroll':
                 if (value) {
                     this.startLyricsAutoScroll();
@@ -2327,9 +2490,16 @@ class HarmoniaApp {
     // 🔴 新規: ビジュアライザーの詳細初期化
     initVisualizer() {
         try {
+            // ビジュアライザーエンジンが未初期化の場合は初期化
             if (!this.visualizerEngine) {
-                console.warn('⚠️ Visualizer engine not initialized');
-                return false;
+                const canvas = document.getElementById('visualizerCanvas');
+                if (!canvas) {
+                    console.warn('⚠️ Canvas element not found');
+                    return false;
+                }
+                
+                this.visualizerEngine = new VisualizerEngine(canvas, this.audio);
+                console.log('✅ Visualizer engine created');
             }
             
             const settings = this.state.get('settings');
@@ -2348,35 +2518,8 @@ class HarmoniaApp {
         }
     }
 
-    // クリーンアップ
-    destroy() {
-        this.stopVisualizer();
-        this.clearSleepTimer();
-        this.stopLyricsAutoScroll();
-        
-        // 🔴 バグ修正: イベントリスナーを削除
-        this.eventListeners.forEach(({ event, handler }) => {
-            document.removeEventListener(event, handler);
-        });
-        this.eventListeners = [];
-        
-        this.audioListeners.forEach(({ element, event, handler }) => {
-            element.removeEventListener(event, handler);
-        });
-        this.audioListeners = [];
-        
-        // すべてのBlob URLを解放
-        const tracks = this.state.get('tracks');
-        tracks.forEach(track => {
-            if (track.url && track.url.startsWith('blob:')) {
-                URL.revokeObjectURL(track.url);
-            }
-            // Base64 data URLはrevokeの必要なし
-        });
-        
-        this.audio.destroy();
-        this.ui.destroy();
-    }
+    // （重複していたクリーンアップは上部の destroy() を使用します）
+
 }
 
 // アプリケーション起動

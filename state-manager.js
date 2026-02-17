@@ -110,9 +110,13 @@ export class StateManager {
                 showAlbumArt: true,
                 showMiniPlayer: false,
                 compactMode: false,
+                compactDensity: 'comfortable', // 'comfortable' | 'compact' | 'condensed'
+                miniPlayerPosition: 'bottom', // 'bottom' | 'left' | 'right'
                 showQueue: true,
                 showLyrics: true,
                 animationsEnabled: true,
+                themeAccent: 'default', // 追加: テーマアクセント
+                colorScheme: 'auto', // 'auto' | 'light' | 'dark'
                 
                 // プライバシー設定
                 savePlayHistory: true,
@@ -128,6 +132,11 @@ export class StateManager {
                 preloadNext: true,
                 hardwareAcceleration: true,
                 experimentalFeatures: false,
+                visualizerQuality: 'high', // 'high' | 'medium' | 'low'
+                loudnessNormalization: false,
+                maxVolumeLimit: 1.0,
+                keyboardShortcutsEnabled: true,
+                hotkeys: {},
                 
                 // 🔋 省エネモード設定（新機能）
                 powerSaveMode: false, // ON/OFF
